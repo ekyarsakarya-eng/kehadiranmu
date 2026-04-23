@@ -63,49 +63,133 @@ async function login() {
     errEl.innerText = 'Gagal konek ke server. Cek API_URL.';
   }
 }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 2000);
+}
+
 async function renderDashboard() {
-  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_dashboard', nama: user.nama }) });
+  // Tambahin header biar nggak CORS
+  const res = await fetch(API_URL, { 
+    method: 'POST', 
+    redirect: 'follow',
+    body: JSON.stringify({ action: 'get_dashboard', nama: user.nama }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
   const data = await res.json();
-  const logo = user.logo_url? `<img src="${user.logo_url}" class="w-10 h-10 object-contain" alt="logo">` : `<i class="ri-building-2-fill text-2xl text-blue-600"></i>`;
+  
+  // Logo dari Sheet Config + fallback kalau error
+  const logo = user.logo_url 
+    ? `<img src="${user.logo_url}" class="w-10 h-10 object-contain" alt="logo" onerror="this.src='icon-192.png'">` 
+    : `<i class="ri-building-2-fill text-3xl text-blue-600"></i>`;
 
   app.innerHTML = `
-  <div class="bg-white pb-20">
+  <div class="bg-white pb-24 min-h-screen">
     <div class="p-4 flex justify-between items-center">
-      <div class="flex items-center gap-2">${logo}<span class="font-bold text-sm">${user.company_name}</span></div>
-      <div class="flex gap-4 text-xl text-gray-600"><i class="ri-notification-3-line"></i><i class="ri-menu-line"></i></div>
-    </div>
-    <div class="px-4 text-gray-600 text-sm flex items-center gap-1"><i class="ri-map-pin-line"></i><span>${user.lokasi} - 50132</span></div>
-    <div class="m-4 bg-blue-600 text-white p-4 rounded-2xl">
       <div class="flex items-center gap-3">
-        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center"><i class="ri-user-fill text-blue-600 text-2xl"></i></div>
-        <div class="flex-1"><p class="font-bold text-sm">${user.nama}</p><p class="text-xs opacity-80">${user.nip} &nbsp;&nbsp; ${user.jabatan}</p></div>
+        ${logo}
+        <span class="font-bold text-lg">${user.company_name}</span>
       </div>
-      <div class="flex justify-between mt-4 text-center text-xs">
-        <div><i class="ri-file-list-3-line text-xl"></i><p>Shift</p><p>N/A</p></div>
-        <div><i class="ri-time-line text-xl"></i><p>Masuk</p><p>${data.jamMasuk}</p></div>
-        <div><i class="ri-timer-line text-xl text-yellow-300"></i><p>Pulang</p><p>${data.jamPulang}</p></div>
+      <div class="flex gap-5 text-2xl text-gray-500">
+        <i class="ri-notification-3-line"></i>
+        <i class="ri-menu-line"></i>
       </div>
-    <div class="px-4 menu-grid text-xs text-gray-700">
-      <div class="menu-item" onclick="renderAbsen()"><i class="ri-calendar-check-line text-blue-600"></i><span>Absensi</span></div>
-      <div class="menu-item"><i class="ri-mail-add-line text-orange-500"></i><span>Izin</span></div>
-      <div class="menu-item"><i class="ri-briefcase-line text-blue-500"></i><span>Cuti</span></div>
-      <div class="menu-item"><i class="ri-time-line text-purple-800"></i><span>Lembur</span></div>
-      <div class="menu-item"><i class="ri-exchange-line text-purple-600"></i><span>Shift</span></div>
-      <div class="menu-item" onclick="renderRekap()"><i class="ri-file-list-2-line text-teal-500"></i><span>Lihat Absen</span></div>
-      <div class="menu-item"><i class="ri-shield-star-line"></i><span>Patroli</span></div>
-      <div class="menu-item"><i class="ri-wallet-3-line text-orange-400"></i><span>Slip Gaji</span></div>
-      <div class="menu-item"><i class="ri-bus-line text-blue-500"></i><span>Dinas</span></div>
-      <div class="menu-item"><i class="ri-bar-chart-line text-teal-600"></i><span>Performance</span></div>
     </div>
+    
+    <div class="px-4 text-gray-800 text-base flex items-center gap-1 mb-3">
+      <i class="ri-map-pin-line"></i>
+      <span class="uppercase font-semibold">${user.lokasi} - 50132</span>
+    </div>
+
+    <div class="mx-4 bg-blue-600 text-white p-4 rounded-2xl shadow-lg">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center">
+          <i class="ri-user-fill text-blue-600 text-3xl"></i>
+        </div>
+        <div class="flex-1">
+          <p class="font-bold text-lg leading-tight">${user.nama}</p>
+          <p class="text-sm opacity-90">${user.nip} &nbsp;&nbsp; ${user.jabatan}</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="flex items-center gap-2 justify-center">
+          <div class="bg-green-500 p-1.5 rounded-lg"><i class="ri-file-list-3-line text-xl"></i></div>
+          <div class="text-left">
+            <p class="text-xs opacity-80">Shift</p>
+            <p class="font-bold">N/A</p>
+          </div>
+        <div class="flex items-center gap-2 justify-center">
+          <div class="bg-teal-400 p-1.5 rounded-lg"><i class="ri-time-line text-xl"></i></div>
+          <div class="text-left">
+            <p class="text-xs opacity-80">Masuk</p>
+            <p class="font-bold">${data.jamMasuk}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 justify-center">
+          <div class="bg-yellow-400 p-1.5 rounded-lg"><i class="ri-timer-line text-xl"></i></div>
+          <div class="text-left">
+            <p class="text-xs opacity-80">Pulang</p>
+            <p class="font-bold">${data.jamPulang}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-6 mt-8 menu-grid text-sm text-gray-700 font-medium">
+      <div class="menu-item" onclick="renderAbsen()">
+        <div class="icon-box text-blue-600"><i class="ri-calendar-check-fill"></i></div>
+        <span>Absensi</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Izin Coming Soon')">
+        <div class="icon-box text-orange-500"><i class="ri-mail-add-fill"></i></div>
+        <span>Izin</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Cuti Coming Soon')">
+        <div class="icon-box text-blue-500"><i class="ri-briefcase-4-fill"></i></div>
+        <span>Cuti</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Lembur Coming Soon')">
+        <div class="icon-box text-gray-800"><i class="ri-time-fill"></i></div>
+        <span>Lembur</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Shift Coming Soon')">
+        <div class="icon-box text-purple-600"><i class="ri-exchange-fill"></i></div>
+        <span>Shift</span>
+      </div>
+      <div class="menu-item" onclick="renderRekap()">
+        <div class="icon-box text-teal-500"><i class="ri-file-list-2-fill"></i></div>
+        <span>Lihat Absen</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Patroli Coming Soon')">
+        <div class="icon-box text-gray-900"><i class="ri-shield-star-fill"></i></div>
+        <span>Patroli</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Slip Gaji Coming Soon')">
+        <div class="icon-box text-orange-400"><i class="ri-sun-fill"></i></div>
+        <span>Slip Gaji</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Dinas Coming Soon')">
+        <div class="icon-box text-blue-500"><i class="ri-bus-2-fill"></i></div>
+        <span>Dinas</span>
+      </div>
+      <div class="menu-item" onclick="showToast('Fitur Performance Coming Soon')">
+        <div class="icon-box text-teal-600"><i class="ri-bar-chart-2-fill"></i></div>
+        <span>Performance</span>
+      </div>
+    </div>
+
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around py-2 text-gray-500 text-xs">
-      <div class="text-blue-600 text-center"><i class="ri-home-5-fill text-xl"></i><p>Home</p></div>
-      <div class="text-center"><i class="ri-building-2-line text-xl"></i><p>Company</p></div>
-      <div class="text-center"><i class="ri-information-line text-xl"></i><p>About</p></div>
-      <div class="text-center" onclick="logout()"><i class="ri-user-line text-xl"></i><p>Account</p></div>
+      <div class="text-blue-600 text-center"><i class="ri-home-5-fill text-2xl"></i><p>Home</p></div>
+      <div class="text-center" onclick="showToast('Coming Soon')"><i class="ri-building-2-line text-2xl"></i><p>Company</p></div>
+      <div class="text-center" onclick="showToast('Coming Soon')"><i class="ri-information-line text-2xl"></i><p>About</p></div>
+      <div class="text-center" onclick="logout()"><i class="ri-user-line text-2xl"></i><p>Account</p></div>
     </div>
   </div>`;
 }
-
 function renderAbsen() {
   navigator.geolocation.getCurrentPosition(pos => {
     getAlamat(pos.coords.latitude, pos.coords.longitude);
