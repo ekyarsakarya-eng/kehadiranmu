@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_URL_KAMU/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzQhbE5QiW8_HOG8d7yTM-68pJFsmKtaK86zKul3X7sRbs1af3GAorBubjVOkP5Gty_/exec';
 const app = document.getElementById('app');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let alamat = 'Mengambil lokasi...';
