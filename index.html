@@ -1,1 +1,23 @@
-
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Absensi Karyawan</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+  .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .menu-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+  .menu-item i { font-size: 2rem; }
+  .toggle-in { background: #3b82f6; color: white; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="app"></div>
+  <script src="app.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+</body>
+</html>
