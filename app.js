@@ -120,13 +120,13 @@ async function renderDashboard() {
             <p class="text-xs opacity-80">Shift</p>
             <p class="font-bold">N/A</p>
           </div>
-        </div>
         <div class="flex items-center gap-2 justify-center">
           <div class="bg-teal-400 p-1.5 rounded-lg"><i class="ri-time-fill text-xl"></i></div>
           <div class="text-left">
             <p class="text-xs opacity-80">Masuk</p>
             <p class="font-bold">${data.jamMasuk}</p>
           </div>
+        </div>
         <div class="flex items-center gap-2 justify-end">
           <div class="bg-yellow-400 p-1.5 rounded-lg"><i class="ri-timer-fill text-xl"></i></div>
           <div class="text-left">
