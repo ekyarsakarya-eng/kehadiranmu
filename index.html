@@ -2,23 +2,25 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - Absensi</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Absensi Karyawan</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
-   .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-   .modal-content { background-color: #fefefe; margin: 3% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
-   .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; }
+    .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem 1rem; justify-items: center; }
+    .menu-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .menu-item .icon-box { width: 3.5rem; height: 3.5rem; display: flex; align-items: center; justify-content: center; }
+    .menu-item i { font-size: 2.25rem; }
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; z-index: 99; }
   </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
   <div id="app"></div>
-  <div id="modal" class="modal">
-    <div class="modal-content" id="modal-content"></div>
-  </div>
-  <script src="admin.js"></script>
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>
