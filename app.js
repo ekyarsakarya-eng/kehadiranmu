@@ -20,6 +20,13 @@ async function getAlamat(lat, lon) {
   } catch { alamat = `${lat}, ${lon}`; }
 }
 
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 2000);
+}
+
 function renderLogin() {
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-blue-600">
@@ -64,15 +71,7 @@ async function login() {
   }
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.innerText = msg;
-  t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 2000);
-}
-
 async function renderDashboard() {
-  // Tambahin header biar nggak CORS
   const res = await fetch(API_URL, { 
     method: 'POST', 
     redirect: 'follow',
@@ -81,7 +80,6 @@ async function renderDashboard() {
   });
   const data = await res.json();
   
-  // Logo dari Sheet Config + fallback kalau error
   const logo = user.logo_url 
     ? `<img src="${user.logo_url}" class="w-10 h-10 object-contain" alt="logo" onerror="this.src='icon-192.png'">` 
     : `<i class="ri-building-2-fill text-3xl text-blue-600"></i>`;
@@ -122,6 +120,7 @@ async function renderDashboard() {
             <p class="text-xs opacity-80">Shift</p>
             <p class="font-bold">N/A</p>
           </div>
+        </div>
         <div class="flex items-center gap-2 justify-center">
           <div class="bg-teal-400 p-1.5 rounded-lg"><i class="ri-time-line text-xl"></i></div>
           <div class="text-left">
@@ -190,6 +189,7 @@ async function renderDashboard() {
     </div>
   </div>`;
 }
+
 function renderAbsen() {
   navigator.geolocation.getCurrentPosition(pos => {
     getAlamat(pos.coords.latitude, pos.coords.longitude);
@@ -216,7 +216,7 @@ function showAbsenScreen(lat, lon) {
         <input type="file" id="fotoInput" accept="image/*" capture="user" class="hidden">
       </div>
       <div class="flex w-40 mx-auto rounded-lg overflow-hidden border border-blue-500">
-        <button id="btnIn" class="flex-1 py-2 toggle-in" onclick="setTipe('IN')">IN</button>
+        <button id="btnIn" class="flex-1 py-2 bg-blue-600 text-white" onclick="setTipe('IN')">IN</button>
         <button id="btnOut" class="flex-1 py-2" onclick="setTipe('OUT')">OUT</button>
       </div>
       <button onclick="submitAbsen(${lat}, ${lon})" class="w-full bg-blue-600 text-white p-4 rounded-xl mt-8 font-bold text-lg">Submit</button>
@@ -228,8 +228,8 @@ function showAbsenScreen(lat, lon) {
   let tipe = 'IN';
   window.setTipe = (t) => {
     tipe = t;
-    document.getElementById('btnIn').className = t==='IN'? 'flex-1 py-2 toggle-in' : 'flex-1 py-2';
-    document.getElementById('btnOut').className = t==='OUT'? 'flex-1 py-2 toggle-in' : 'flex-1 py-2';
+    document.getElementById('btnIn').className = t==='IN'? 'flex-1 py-2 bg-blue-600 text-white' : 'flex-1 py-2';
+    document.getElementById('btnOut').className = t==='OUT'? 'flex-1 py-2 bg-blue-600 text-white' : 'flex-1 py-2';
   };
   document.getElementById('fotoInput').onchange = e => {
     const file = e.target.files[0];
@@ -246,7 +246,9 @@ function showAbsenScreen(lat, lon) {
     status.innerText = 'Mengirim...'; status.className='text-blue-500';
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'absen', nama: user.nama, lokasiWajib: user.lokasi, lat, lon, foto: window.fotoBase64, tipe })
+      redirect: 'follow',
+      body: JSON.stringify({ action: 'absen', nama: user.nama, lokasiWajib: user.lokasi, lat, lon, foto: window.fotoBase64, tipe }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
     const data = await res.json();
     status.innerText = data.msg;
@@ -256,13 +258,19 @@ function showAbsenScreen(lat, lon) {
 }
 
 async function renderRekap() {
-  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_rekap', nama: user.nama }) });
+  const res = await fetch(API_URL, { 
+    method: 'POST', 
+    redirect: 'follow',
+    body: JSON.stringify({ action: 'get_rekap', nama: user.nama }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
   const data = await res.json();
-  let html = `<div class="bg-white h-screen"><div class="p-4 flex items-center gap-4 border-b">
+  let html = `<div class="bg-white min-h-screen pb-20"><div class="p-4 flex items-center gap-4 border-b sticky top-0 bg-white">
     <i class="ri-arrow-left-s-line text-2xl" onclick="renderDashboard()"></i><h1 class="text-lg font-bold">Rekap Absen</h1></div><div class="p-4">`;
-  data.data.slice(0, 20).forEach(r => {
+  data.data.slice(0, 30).forEach(r => {
     html += `<div class="border-b py-3 text-sm">
-      <b>${r.tanggal}</b><br>Masuk: ${r.masuk} | Pulang: ${r.pulang || '-'}<br>Durasi: ${r.durasi || '-'} | ${r.lokasi}
+      <div class="flex justify-between"><b>${r.tanggal}</b><span class="text-gray-500">${r.durasi || '-'}</span></div>
+      <div class="text-gray-600 mt-1">Masuk: ${r.masuk} | Pulang: ${r.pulang || '-'} | ${r.lokasi}</div>
     </div>`;
   });
   app.innerHTML = html + '</div></div>';
@@ -274,4 +282,4 @@ function logout() {
   renderLogin();
 }
 
-user? renderDashboard() : renderLogin();
+user ? renderDashboard() : renderLogin();
