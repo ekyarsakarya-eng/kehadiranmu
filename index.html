@@ -9,14 +9,17 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-  .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-  .menu-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-  .menu-item i { font-size: 2rem; }
-  .toggle-in { background: #3b82f6; color: white; }
+    body { font-family: 'Inter', sans-serif; }
+    .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem 1rem; }
+    .menu-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .menu-item .icon-box { width: 3.5rem; height: 3.5rem; display: flex; align-items: center; justify-content: center; }
+    .menu-item i { font-size: 2.25rem; }
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; z-index: 99; }
   </style>
 </head>
 <body class="bg-gray-50">
   <div id="app"></div>
+  <div id="toast" class="toast hidden"></div>
   <script src="app.js"></script>
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
