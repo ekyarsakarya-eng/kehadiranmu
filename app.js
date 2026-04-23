@@ -39,17 +39,30 @@ function renderLogin() {
 async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
-  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', username, password }) });
-  const data = await res.json();
-  if (data.status === 'success') {
-    user = data.data;
-    localStorage.setItem('user', JSON.stringify(user));
-    renderDashboard();
-  } else {
-    document.getElementById('err').innerText = data.msg;
+  const errEl = document.getElementById('err');
+  errEl.innerText = 'Login...';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      body: JSON.stringify({ action: 'login', username, password }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+    });
+    
+    const data = await res.json();
+    if (data.status === 'success') {
+      user = data.data;
+      localStorage.setItem('user', JSON.stringify(user));
+      renderDashboard();
+    } else {
+      errEl.innerText = data.msg || 'Login gagal';
+    }
+  } catch (e) {
+    console.error(e);
+    errEl.innerText = 'Gagal konek ke server. Cek API_URL.';
   }
 }
-
 async function renderDashboard() {
   const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_dashboard', nama: user.nama }) });
   const data = await res.json();
