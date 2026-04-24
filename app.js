@@ -319,10 +319,6 @@ async function saveAccount() {
   }
 }
 
-async function renderAbsen() {
-  app.innerHTML = `<div class="p-4"><p>Fitur Absen Kamera...</p></div>${renderBottomNav('home')}`;
-}
-
 async function renderRekap() {
   app.innerHTML = `<div class="p-4"><p>Fitur Rekap...</p></div>${renderBottomNav('home')}`;
 }
