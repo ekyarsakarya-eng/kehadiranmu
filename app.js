@@ -75,25 +75,20 @@ function logout() {
 }
 
 async function renderHome() {
-  if (!currentUser) {
-    renderLogin();
-    return;
-  }
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
   const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   const logoPT = appSetting.Logo_Login || foto;
-  const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || '-';
+  const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || 'Nama Perusahaan';
   
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-4 flex justify-between items-center">
-    <div class="flex items-center gap-3">
-      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='${foto}'">
-      <div>
-        <p class="font-bold text-sm">${currentUser.Nama || '-'}</p>
-        <p class="text-xs text-gray-500">${namaPT}</p>
+  <div class="bg-white shadow-sm p-3 flex justify-between items-center">
+    <div class="flex items-center gap-3 min-w-0 flex-1">
+      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" onerror="this.src='${foto}'">
+      <div class="min-w-0 flex-1">
+        <p class="font-bold text-lg text-gray-800 truncate">${namaPT}</p>
       </div>
     </div>
-    <div class="flex gap-4 text-xl text-gray-600">
+    <div class="flex gap-4 text-xl text-gray-600 flex-shrink-0">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
     </div>
