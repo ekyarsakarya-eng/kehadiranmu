@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbykNYbs54O1BSmAn7qcjqBpYfaGekM9WLaQ505JkJsLtJ-kU3InUrwHIP-ikWiDU_7x/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyP2011JEyfjxhcesVLwpxhczEH1E3gQfwda99aTywu4kiklWlsqIDS-jILfj7USRm0/exec';
 const app = document.getElementById('app');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let alamat = 'Mengambil lokasi...';
