@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxdF8BrgjDPA3jMBj_HyKz01LXOXIGVzS5S0PcXSVGXuYquhhoUVb84EVLjwvdRXlEw/exec'; // <-- GANTI INI
+const API_URL = 'https://script.google.com/macros/s/AKfycbzi_WID_nzGf3R83quzpSxCiJcDbh-jW_oQv4HgMUFh8CdQqLTWxZFTNzZYDN4VC3V-/exec';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
