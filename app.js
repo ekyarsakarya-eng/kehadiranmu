@@ -23,21 +23,21 @@ async function apiCall(action, payload = {}) {
 }
 
 async function renderLogin() {
-  if (Object.keys(appSetting).length === 0) {
-    const res = await apiCall('get_setting');
-    if (res.status === 'success') {
-      appSetting = res.data;
-      sessionStorage.setItem('setting', JSON.stringify(appSetting));
-    } else {
-      console.error('Gagal load setting:', res.msg);
-    }
+  // Paksa ambil setting terbaru dari server, jangan pake cache
+  const res = await apiCall('get_setting');
+  if (res.status === 'success') {
+    appSetting = res.data;
+    sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
+  
   const logoUrl = appSetting.Logo_Login || 'https://placehold.co/100x100/800000/FFFFFF?text=Logo';
+  const namaPT = appSetting.Nama_Perusahaan || 'Login Absensi';
+  
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gray-100">
     <div class="bg-white p-8 rounded-xl shadow-lg w-11/12 max-w-sm">
       <img src="${logoUrl}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover" onerror="this.src='https://placehold.co/100x100/800000/FFFFFF?text=Logo'">
-      <h1 class="text-xl font-bold text-center mb-6">Login Absensi</h1>
+      <h1 class="text-xl font-bold text-center mb-6">${namaPT}</h1>
       <input id="username" type="text" placeholder="Username" class="w-full border p-3 rounded-lg mb-3">
       <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
       <button onclick="login()" class="w-full text-white p-3 rounded-lg font-bold" style="background-color:#800000">Login</button>
