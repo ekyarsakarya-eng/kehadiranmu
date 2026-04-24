@@ -1,8 +1,9 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbxdF8BrgjDPA3jMBj_HyKz01LXOXIGVzS5S0PcXSVGXuYquhhoUVb84EVLjwvdRXlEw/exec'; // <-- GANTI INI
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
 
-const USER_FIELDS = ['Username', 'Password', 'Nama', 'NIP', 'Jabatan', 'Lokasi', 'Perusahaan', 'URL_Logo'];
+const USER_FIELDS = ['Username', 'Password', 'Nama', 'NIP', 'Jabatan', 'Lokasi', 'Perusahaan', 'URL_Logo', 'Alamat', 'No_Tlpn', 'Email'];
 
 async function apiCall(action, payload = {}) {
   try {
@@ -19,11 +20,19 @@ async function apiCall(action, payload = {}) {
   }
 }
 
-function renderLogin() {
+async function renderLogin() {
+  if (Object.keys(appSetting).length === 0) {
+    const res = await apiCall('get_setting');
+    if (res.status === 'success') {
+      appSetting = res.data;
+      sessionStorage.setItem('setting', JSON.stringify(appSetting));
+    }
+  }
+  const logoUrl = appSetting.Logo_Login || 'https://placehold.co/100x100/800000/FFFFFF?text=Logo';
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gray-100">
     <div class="bg-white p-8 rounded-xl shadow-lg w-11/12 max-w-sm">
-      <img src="https://placehold.co/100x100/800000/FFFFFF?text=Logo" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
+      <img src="${logoUrl}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover" onerror="this.src='https://placehold.co/100x100/800000/FFFFFF?text=Logo'">
       <h1 class="text-xl font-bold text-center mb-6">Login Absensi</h1>
       <input id="username" type="text" placeholder="Username" class="w-full border p-3 rounded-lg mb-3">
       <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
@@ -41,7 +50,9 @@ async function login() {
   const res = await apiCall('login', { username, password });
   if (res.status === 'success') {
     currentUser = res.data;
+    appSetting = res.setting || {};
     sessionStorage.setItem('user', JSON.stringify(currentUser));
+    sessionStorage.setItem('setting', JSON.stringify(appSetting));
     renderHome();
   } else {
     errEl.innerText = res.msg;
@@ -57,6 +68,7 @@ function logout() {
 async function renderHome() {
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
   const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=User';
+  const namaPerusahaan = appSetting.Nama_Perusahaan || currentUser.Perusahaan || '-';
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 flex justify-between items-center">
@@ -78,36 +90,33 @@ async function renderHome() {
         <img src="${foto}" class="w-12 h-12 rounded-full object-cover bg-white p-1" onerror="this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
           <p class="font-bold">${currentUser.Nama || '-'}</p>
-          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.Perusahaan || '-'}</p>
+          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${namaPerusahaan}</p>
         </div>
       </div>
       <div class="flex justify-between text-center bg-black bg-opacity-20 p-3 rounded-lg">
-        <div>
-          <p class="text-xs opacity-80">Masuk</p>
-          <p class="font-bold text-lg">${res.jamMasuk || '00:00'}</p>
-        </div>
-        <div>
-          <p class="text-xs opacity-80">Pulang</p>
-          <p class="font-bold text-lg">${res.jamPulang || '00:00'}</p>
-        </div>
-        <div>
-          <p class="text-xs opacity-80">Shift</p>
-          <p class="font-bold text-lg">N/A</p>
-        </div>
+        <div><p class="text-xs opacity-80">Masuk</p><p class="font-bold text-lg">${res.jamMasuk || '00:00'}</p></div>
+        <div><p class="text-xs opacity-80">Pulang</p><p class="font-bold text-lg">${res.jamPulang || '00:00'}</p></div>
+        <div><p class="text-xs opacity-80">Shift</p><p class="font-bold text-lg">N/A</p></div>
       </div>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 text-center mt-6 text-xs">
+    <div class="grid grid-cols-4 gap-4 text-center mt-6 text-xs">
       <button onclick="renderAbsen()" class="flex flex-col items-center gap-1"><i class="ri-fingerprint-line text-3xl text-blue-600"></i>Absensi</button>
-      <button class="flex flex-col items-center gap-1 opacity-50"><i class="ri-mail-send-line text-3xl text-orange-500"></i>Izin</button>
-      <button class="flex flex-col items-center gap-1 opacity-50"><i class="ri-suitcase-line text-3xl text-sky-600"></i>Cuti</button>
-      <button class="flex flex-col items-center gap-1 opacity-50"><i class="ri-time-line text-3xl text-gray-700"></i>Lembur</button>
-      <button class="flex flex-col items-center gap-1 opacity-50"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-mail-send-line text-3xl text-orange-500"></i>Izin</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-suitcase-line text-3xl text-sky-600"></i>Cuti</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-time-line text-3xl text-gray-700"></i>Lembur</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
       <button onclick="renderRekap()" class="flex flex-col items-center gap-1"><i class="ri-file-list-3-line text-3xl text-green-600"></i>Lihat Absen</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-walk-line text-3xl text-red-600"></i>Patroli</button>
+      <button onclick="logout()" class="flex flex-col items-center gap-1"><i class="ri-logout-box-r-line text-3xl text-black"></i>Keluar</button>
     </div>
   </div>
   ${renderBottomNav('home')}
   `;
+}
+
+function comingSoon() {
+  alert('Fitur ini segera hadir!');
 }
 
 function renderBottomNav(active) {
@@ -127,9 +136,7 @@ function renderBottomNav(active) {
 function renderAccount() {
   const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=User';
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-4 text-center">
-    <h1 class="text-xl font-bold">Account</h1>
-  </div>
+  <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
     <div class="bg-white rounded-lg shadow p-4 text-center mb-4">
       <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
@@ -142,6 +149,9 @@ function renderAccount() {
       <div><label class="text-xs text-gray-500">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Alamat</label><input id="Alamat" value="${currentUser.Alamat || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">No. Telpon</label><input id="No_Tlpn" value="${currentUser.No_Tlpn || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Email</label><input id="Email" value="${currentUser.Email || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border p-2 rounded-lg"></div>
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-lg font-bold mt-2" style="background-color:#800000">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg font-bold">Logout</button>
@@ -162,7 +172,7 @@ function previewFoto(event) {
 
 async function saveAccount() {
   const newUser = {...currentUser };
-  ['Nama', 'Jabatan', 'Lokasi', 'Perusahaan', 'Password'].forEach(f => {
+  ['Nama', 'Jabatan', 'Lokasi', 'Perusahaan', 'Alamat', 'No_Tlpn', 'Email', 'Password'].forEach(f => {
     const el = document.getElementById(f);
     if (el && el.value) newUser[f] = el.value;
   });
@@ -175,7 +185,7 @@ async function saveAccount() {
   if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
-    renderAccount();
+    renderAccount(); // Refresh halaman account
   }
 }
 
@@ -188,4 +198,10 @@ async function renderRekap() {
 }
 
 // Init
-currentUser? renderHome() : renderLogin();
+(async function init() {
+  if (currentUser) {
+    renderHome();
+  } else {
+    await renderLogin();
+  }
+})();
