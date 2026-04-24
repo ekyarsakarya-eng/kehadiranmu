@@ -320,7 +320,48 @@ async function saveAccount() {
 }
 
 async function renderRekap() {
-  app.innerHTML = `<div class="p-4"><p>Fitur Rekap...</p></div>${renderBottomNav('home')}`;
+  app.innerHTML = `
+  <div class="bg-white shadow-sm p-4 flex items-center gap-3">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl"></i></button>
+    <h1 class="text-xl font-bold">Riwayat Absensi</h1>
+  </div>
+  <div class="p-4 pb-24" id="rekapContent">Loading...</div>
+  ${renderBottomNav('home')}
+  `;
+  
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama });
+  const content = document.getElementById('rekapContent');
+  
+  if (res.status!== 'success') {
+    content.innerHTML = `<p class="text-red-500 text-center">Gagal load: ${res.msg}</p>`;
+    return;
+  }
+  
+  const data = res.data.reverse(); // Terbaru di atas
+  if (data.length === 0) {
+    content.innerHTML = `<p class="text-gray-500 text-center">Belum ada data absensi</p>`;
+    return;
+  }
+  
+  content.innerHTML = data.map(r => `
+    <div class="bg-white rounded-lg shadow p-4 mb-3">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <p class="font-bold">${r.Tanggal}</p>
+          <p class="text-xs text-gray-500">${r.Lokasi || '-'}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-500">Durasi</p>
+          <p class="font-bold text-sm">${r.Durasi || '-'}</p>
+        </div>
+      </div>
+      <div class="flex justify-between text-center bg-gray-50 p-2 rounded">
+        <div><p class="text-xs text-gray-500">Masuk</p><p class="font-bold">${r['Jam Masuk'] || '-'}</p></div>
+        <div><p class="text-xs text-gray-500">Pulang</p><p class="font-bold">${r['Jam Pulang'] || '-'}</p></div>
+      </div>
+      ${r.Foto_URL? `<img src="${r.Foto_URL}" class="w-full h-32 object-cover rounded mt-2" />` : ''}
+    </div>
+  `).join('');
 }
 
 (function init() {
