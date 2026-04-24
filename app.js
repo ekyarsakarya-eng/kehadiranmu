@@ -14,7 +14,7 @@ async function apiCall(action, payload = {}) {
     return await res.json();
   } catch (e) {
     console.error('API Error:', e);
-    return { status: 'error', msg: 'Gagal konek ke server' };
+    return { status: 'error', msg: 'Gagal konek ke server: ' + e.message };
   }
 }
 
@@ -121,12 +121,12 @@ function comingSoon() {
 function renderBottomNav(active) {
   return `
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around text-xs py-2">
-    <button onclick="renderHome()" class="${active === 'home'? 'text-maroon-700' : 'text-gray-500'}" style="color:${active === 'home'? '#800000' : ''}">
+    <button onclick="renderHome()" style="color:${active === 'home'? '#800000' : '#6b7280'}">
       <i class="ri-home-5-fill text-xl"></i><p>Home</p>
     </button>
     <button class="text-gray-500"><i class="ri-building-4-line text-xl"></i><p>Company</p></button>
     <button class="text-gray-500"><i class="ri-information-line text-xl"></i><p>About</p></button>
-    <button onclick="renderAccount()" class="${active === 'account'? 'text-maroon-700' : 'text-gray-500'}" style="color:${active === 'account'? '#800000' : ''}">
+    <button onclick="renderAccount()" style="color:${active === 'account'? '#800000' : '#6b7280'}">
       <i class="ri-user-3-line text-xl"></i><p>Account</p>
     </button>
   </div>`;
@@ -184,7 +184,7 @@ async function saveAccount() {
   if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
-    renderHome(); // Balik ke home biar foto header ke-refresh
+    renderHome();
   }
 }
 
@@ -196,7 +196,6 @@ async function renderRekap() {
   app.innerHTML = `<div class="p-4"><p>Fitur Rekap...</p></div>${renderBottomNav('home')}`;
 }
 
-// Init
 (async function init() {
   if (currentUser) {
     renderHome();
