@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxdF8BrgjDPA3jMBj_HyKz01LXOXIGVzS5S0PcXSVGXuYquhhoUVb84EVLjwvdRXlEw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxdF8BrgjDPA3jMBj_HyKz01LXOXIGVzS5S0PcXSVGXuYquhhoUVb84EVLjwvdRXlEw/exec'; // <-- GANTI INI
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 
@@ -23,11 +23,11 @@ function renderLogin() {
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gray-100">
     <div class="bg-white p-8 rounded-xl shadow-lg w-11/12 max-w-sm">
-      <img src="${currentUser?.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=Logo'}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
+      <img src="https://placehold.co/100x100/800000/FFFFFF?text=Logo" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
       <h1 class="text-xl font-bold text-center mb-6">Login Absensi</h1>
       <input id="username" type="text" placeholder="Username" class="w-full border p-3 rounded-lg mb-3">
       <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
-      <button onclick="login()" class="w-full bg-maroon-700 text-white p-3 rounded-lg font-bold" style="background-color:#800000">Login</button>
+      <button onclick="login()" class="w-full text-white p-3 rounded-lg font-bold" style="background-color:#800000">Login</button>
       <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
     </div>
   </div>`;
@@ -63,7 +63,7 @@ async function renderHome() {
     <div class="flex items-center gap-3">
       <img src="${foto}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='https://placehold.co/40x40/FFFFFF/800000?text=U'">
       <div>
-        <p class="font-bold text-sm">${currentUser.Nama}</p>
+        <p class="font-bold text-sm">${currentUser.Nama || '-'}</p>
         <p class="text-xs text-gray-500">${currentUser.Jabatan || '-'} - ${currentUser.NIP || '-'}</p>
       </div>
     </div>
@@ -72,12 +72,12 @@ async function renderHome() {
       <i class="ri-menu-line"></i>
     </div>
   </div>
-  <div class="p-4">
-    <div class="bg-maroon-700 text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
+  <div class="p-4 pb-24">
+    <div class="text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
       <div class="flex items-center gap-3 mb-4">
         <img src="${foto}" class="w-12 h-12 rounded-full object-cover bg-white p-1" onerror="this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
-          <p class="font-bold">${currentUser.Nama}</p>
+          <p class="font-bold">${currentUser.Nama || '-'}</p>
           <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.Perusahaan || '-'}</p>
         </div>
       </div>
@@ -130,11 +130,11 @@ function renderAccount() {
   <div class="bg-white shadow-sm p-4 text-center">
     <h1 class="text-xl font-bold">Account</h1>
   </div>
-  <div class="p-4 pb-20">
+  <div class="p-4 pb-24">
     <div class="bg-white rounded-lg shadow p-4 text-center mb-4">
       <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
       <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
-      <button onclick="document.getElementById('fotoInput').click()" class="text-sm text-maroon-700 font-bold" style="color:#800000">Ganti Foto</button>
+      <button onclick="document.getElementById('fotoInput').click()" class="text-sm font-bold" style="color:#800000">Ganti Foto</button>
     </div>
     <div class="bg-white rounded-lg shadow p-4 space-y-3">
       <div><label class="text-xs text-gray-500">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border p-2 rounded-lg"></div>
@@ -143,7 +143,7 @@ function renderAccount() {
       <div><label class="text-xs text-gray-500">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border p-2 rounded-lg"></div>
-      <button onclick="saveAccount()" class="w-full bg-maroon-700 text-white p-3 rounded-lg font-bold mt-2" style="background-color:#800000">Simpan Perubahan</button>
+      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-lg font-bold mt-2" style="background-color:#800000">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg font-bold">Logout</button>
     </div>
   </div>
@@ -162,10 +162,9 @@ function previewFoto(event) {
 
 async function saveAccount() {
   const newUser = {...currentUser };
-  USER_FIELDS.forEach(f => {
-    if (f!== 'Foto_Profil' && document.getElementById(f)) {
-      newUser[f] = document.getElementById(f).value || newUser[f];
-    }
+  ['Nama', 'Jabatan', 'Lokasi', 'Perusahaan', 'Password'].forEach(f => {
+    const el = document.getElementById(f);
+    if (el && el.value) newUser[f] = el.value;
   });
   const fotoInput = document.getElementById('fotoInput');
   if (fotoInput.files[0]) {
@@ -181,11 +180,11 @@ async function saveAccount() {
 }
 
 async function renderAbsen() {
-  //... fungsi absen tetap sama...
+  app.innerHTML = `<div class="p-4"><p>Fitur Absen Kamera...</p></div>${renderBottomNav('home')}`;
 }
 
 async function renderRekap() {
-  //... fungsi rekap tetap sama...
+  app.innerHTML = `<div class="p-4"><p>Fitur Rekap...</p></div>${renderBottomNav('home')}`;
 }
 
 // Init
