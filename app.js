@@ -1,9 +1,7 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzi_WID_nzGf3R83quzpSxCiJcDbh-jW_oQv4HgMUFh8CdQqLTWxZFTNzZYDN4VC3V-/exec';
+const API_URL = 'PASTE_URL_WEB_APP_TERBARU_DISINI'; // <-- GANTI INI
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
-
-const USER_FIELDS = ['Username', 'Password', 'Nama', 'NIP', 'Jabatan', 'Lokasi', 'Perusahaan', 'URL_Logo', 'Alamat', 'No_Tlpn', 'Email'];
 
 async function apiCall(action, payload = {}) {
   try {
@@ -67,16 +65,17 @@ function logout() {
 
 async function renderHome() {
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
-  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=User';
-  const namaPerusahaan = appSetting.Nama_Perusahaan || currentUser.Perusahaan || '-';
+  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
+  const logoPT = appSetting.Logo_Login || foto;
+  const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || '-';
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 flex justify-between items-center">
     <div class="flex items-center gap-3">
-      <img src="${foto}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='https://placehold.co/40x40/FFFFFF/800000?text=U'">
+      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='${foto}'">
       <div>
         <p class="font-bold text-sm">${currentUser.Nama || '-'}</p>
-        <p class="text-xs text-gray-500">${currentUser.Jabatan || '-'} - ${currentUser.NIP || '-'}</p>
+        <p class="text-xs text-gray-500">${namaPT}</p>
       </div>
     </div>
     <div class="flex gap-4 text-xl text-gray-600">
@@ -90,7 +89,7 @@ async function renderHome() {
         <img src="${foto}" class="w-12 h-12 rounded-full object-cover bg-white p-1" onerror="this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
           <p class="font-bold">${currentUser.Nama || '-'}</p>
-          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${namaPerusahaan}</p>
+          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
         </div>
       </div>
       <div class="flex justify-between text-center bg-black bg-opacity-20 p-3 rounded-lg">
@@ -134,7 +133,7 @@ function renderBottomNav(active) {
 }
 
 function renderAccount() {
-  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=User';
+  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
@@ -185,7 +184,7 @@ async function saveAccount() {
   if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
-    renderAccount(); // Refresh halaman account
+    renderHome(); // Balik ke home biar foto header ke-refresh
   }
 }
 
