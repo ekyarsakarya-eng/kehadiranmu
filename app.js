@@ -1,9 +1,10 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzWH1CzT2wV8IQ1bJJMZcEK5jC_PJPisrjCFW2voJBeLCupdjp5RSMti1Rcgh3REdcN/exec'; // <-- GANTI INI
+const API_URL = 'https://script.google.com/macros/s/AKfycbzWH1CzT2wV8IQ1bJJMZcEK5jC_PJPisrjCFW2voJBeLCupdjp5RSMti1Rcgh3REdcN/exec';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
 
 async function apiCall(action, payload = {}) {
+  console.log('[USER API] Call:', action, payload);
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -11,9 +12,12 @@ async function apiCall(action, payload = {}) {
       body: JSON.stringify({ action,...payload }),
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
-    return await res.json();
+    const text = await res.text();
+    console.log('[USER API] Raw:', text);
+    return JSON.parse(text);
   } catch (e) {
     console.error('API Error:', e);
+    app.innerHTML = `<div class="p-8 text-center text-red-600"><h1 class="font-bold">Gagal Konek Server</h1><p class="text-sm mt-2">${e.message}</p></div>`;
     return { status: 'error', msg: 'Gagal konek ke server: ' + e.message };
   }
 }
@@ -24,6 +28,8 @@ async function renderLogin() {
     if (res.status === 'success') {
       appSetting = res.data;
       sessionStorage.setItem('setting', JSON.stringify(appSetting));
+    } else {
+      console.error('Gagal load setting:', res.msg);
     }
   }
   const logoUrl = appSetting.Logo_Login || 'https://placehold.co/100x100/800000/FFFFFF?text=Logo';
@@ -36,6 +42,7 @@ async function renderLogin() {
       <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
       <button onclick="login()" class="w-full text-white p-3 rounded-lg font-bold" style="background-color:#800000">Login</button>
       <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
+      <p class="text-xs text-gray-400 text-center mt-4">Hubungi admin jika belum punya akun</p>
     </div>
   </div>`;
 }
@@ -44,6 +51,10 @@ async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   const errEl = document.getElementById('err');
+  if (!username || !password) {
+    errEl.innerText = 'Username & Password wajib diisi';
+    return;
+  }
   errEl.innerText = 'Login...';
   const res = await apiCall('login', { username, password });
   if (res.status === 'success') {
@@ -64,6 +75,10 @@ function logout() {
 }
 
 async function renderHome() {
+  if (!currentUser) {
+    renderLogin();
+    return;
+  }
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
   const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   const logoPT = appSetting.Logo_Login || foto;
@@ -196,10 +211,7 @@ async function renderRekap() {
   app.innerHTML = `<div class="p-4"><p>Fitur Rekap...</p></div>${renderBottomNav('home')}`;
 }
 
-(async function init() {
-  if (currentUser) {
-    renderHome();
-  } else {
-    await renderLogin();
-  }
+(function init() {
+  console.log('Init user, API_URL:', API_URL);
+  currentUser? renderHome() : renderLogin();
 })();
