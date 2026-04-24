@@ -8,14 +8,14 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .tab-active { border-bottom: 2px solid #1f2937; }
+   .tab-active { border-bottom: 2px solid #1f2937; }
   </style>
 </head>
 <body class="bg-gray-100">
   <div id="app"></div>
 
 <script>
-const API_URL = 'PASTE_URL_WEB_APP_TERBARU_DISINI'; // <-- GANTI INI
+const API_URL = 'https://script.google.com/macros/s/AKfycbxfjI4sp8Cbrq6nMAa3ZpVik-fUHMq49oc-99ot2Wyakk87AYznFbzW4UGmLkRbAz6j/exec'; // <-- GANTI INI
 const app = document.getElementById('app');
 let admin = JSON.parse(sessionStorage.getItem('admin') || 'null');
 let allUsers = [];
@@ -195,13 +195,20 @@ async function renderTabSetting() {
   content.innerHTML = 'Loading setting...';
   const res = await apiCall('get_setting');
   const setting = res.data || {};
+  appSetting = setting;
   content.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Setting Aplikasi</h2>
     <div class="space-y-4 max-w-2xl">
       <div>
-        <label class="text-sm font-bold text-gray-600">URL Logo Login</label>
-        <input id="Logo_Login" value="${setting.Logo_Login || ''}" class="w-full border p-2 rounded-lg mt-1" placeholder="https://...">
-        <p class="text-xs text-gray-500 mt-1">Upload ke Google Drive > Get link > ganti view jadi uc?export=view&id=</p>
+        <label class="text-sm font-bold text-gray-600">Logo Login & Perusahaan</label>
+        <div class="flex items-center gap-4 mt-1">
+          <img id="previewLogo" src="${setting.Logo_Login || 'https://placehold.co/80x80/800000/FFFFFF?text=Logo'}" class="w-20 h-20 rounded-lg object-cover border">
+          <div>
+            <input type="file" id="logoInput" accept="image/*" class="hidden" onchange="previewLogo(event)">
+            <button onclick="document.getElementById('logoInput').click()" class="bg-gray-200 px-3 py-2 rounded-lg text-sm">Upload dari PC</button>
+            <p class="text-xs text-gray-500 mt-1">Upload PNG/JPG. Otomatis ganti logo login & header.</p>
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-bold text-gray-600">Nama Perusahaan</label>
@@ -211,12 +218,26 @@ async function renderTabSetting() {
     </div>`;
 }
 
+function previewLogo(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => document.getElementById('previewLogo').src = e.target.result;
+    reader.readAsDataURL(file);
+  }
+}
+
 async function saveSetting() {
-  const logo = document.getElementById('Logo_Login').value;
+  const logoInput = document.getElementById('logoInput');
   const nama = document.getElementById('Nama_Perusahaan').value;
-  await apiCall('admin_save_setting', { key: 'Logo_Login', value: logo });
+  
+  if (logoInput.files[0]) {
+    const base64 = document.getElementById('previewLogo').src;
+    await apiCall('admin_save_setting', { key: 'Logo_Login', value: base64 });
+  }
   await apiCall('admin_save_setting', { key: 'Nama_Perusahaan', value: nama });
-  alert('Setting disimpan! Refresh halaman user untuk melihat perubahan.');
+  alert('Setting disimpan! User harus logout-login ulang untuk melihat perubahan.');
+  renderTabSetting();
 }
 
 function showAddUser() {
