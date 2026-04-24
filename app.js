@@ -1,4 +1,4 @@
-const API_URL = 'PASTE_URL_WEB_APP_TERBARU_DISINI'; // <-- GANTI INI
+const API_URL = 'https://script.google.com/macros/s/AKfycbxfjI4sp8Cbrq6nMAa3ZpVik-fUHMq49oc-99ot2Wyakk87AYznFbzW4UGmLkRbAz6j/exec'; // <-- GANTI INI
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
