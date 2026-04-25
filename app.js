@@ -41,12 +41,13 @@ function showToast(msg, type = 'success') {
   setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
   setTimeout(() => {
     toast.style.transform = 'translate(-50%, -100px)';
-    setTimeout(() => toast.remove(), 300);
+    setTimeout(() => toast.remove(), 200);
   }, 2000);
 }
 
 async function apiCall(action, payload = {}) {
   try {
+    console.log('API CALL:', action, payload); // DEBUG
     const res = await fetch(API_URL, {
       method: 'POST',
       redirect: 'follow',
@@ -54,8 +55,11 @@ async function apiCall(action, payload = {}) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
     const text = await res.text();
-    return JSON.parse(text);
+    const result = JSON.parse(text);
+    console.log('API RESPONSE:', result); // DEBUG
+    return result;
   } catch (e) {
+    console.error('API ERROR:', e);
     showToast('Gagal konek server', 'error');
     return { status: 'error', msg: e.message };
   }
@@ -109,6 +113,7 @@ async function login() {
     appSetting = res.setting || {};
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
+    console.log('LOGIN SUCCESS, USER:', currentUser); // DEBUG
     showToast('Login berhasil!', 'success');
     setTimeout(() => renderHome(), 500);
   } else {
@@ -125,6 +130,8 @@ function logout() {
 }
 
 async function renderHome() {
+  console.log('RENDER HOME, USER:', currentUser); // DEBUG
+  
   const [dashboardRes, rekapRes] = await Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama }),
     apiCall('get_rekap_user', { nama: currentUser.Nama })
@@ -159,16 +166,15 @@ async function renderHome() {
     statusIcon = 'ri-checkbox-circle-line';
   }
 
+  // FIX: Ambil statistik dari backend, bukan hitung manual
   let totalHadir = 0;
-  if (rekapRes.status === 'success') {
-    const now = new Date();
-    const bulanIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const dataBulan = rekapRes.data.filter(r => {
-      if (!r.Tanggal) return false;
-      const tgl = r.Tanggal.includes('/')? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
-      return tgl.startsWith(bulanIni);
-    });
-    totalHadir = dataBulan.filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
+  let totalIzin = 0;
+  let totalAlpa = 0;
+  
+  if (rekapRes.status === 'success' && rekapRes.statistik) {
+    totalHadir = rekapRes.statistik.hadir || 0;
+    totalAlpa = rekapRes.statistik.alpa || 0;
+    console.log('STATISTIK DARI SERVER:', rekapRes.statistik); // DEBUG
   }
 
   const greeting = getGreeting();
@@ -252,11 +258,11 @@ async function renderHome() {
                 <p class="text-xs opacity-90 mt-1">Hadir</p>
               </div>
               <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">0</p>
+                <p class="text-3xl font-bold">${totalIzin}</p>
                 <p class="text-xs opacity-90 mt-1">Izin</p>
               </div>
               <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">0</p>
+                <p class="text-3xl font-bold">${totalAlpa}</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
             </div>
@@ -562,8 +568,8 @@ function renderAccount() {
     <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
       <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
            onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
-      <input type="file" id="fotoInput"      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
-      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
+      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
+      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
       <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
       <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
     </div>
@@ -596,6 +602,7 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
+  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
@@ -710,9 +717,9 @@ async function loadRekapBulan() {
   const [year, month] = bulan.split('-');
   const data = res.data.filter(r => {
     if (!r.Tanggal) return false;
-    const tgl = r.Tanggal.includes('/')? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
+    const tgl = r.TanggalRaw || r.Tanggal;
     return tgl.startsWith(`${year}-${month}`);
-  }).reverse();
+  });
 
   if (data.length === 0) {
     content.innerHTML = `
