@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzWH1CzT2wV8IQ1bJJMZcEK5jC_PJPisrjCFW2voJBeLCupdjp5RSMti1Rcgh3REdcN/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyFpzA_bnQ8TKV9SkDw6KltDUnFIi-LEX_8AMIIZGUl4uxuv01nSd7mSPOq63Kg2VnH/exec';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
