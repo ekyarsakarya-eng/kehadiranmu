@@ -3,7 +3,6 @@ const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
 
-// MODAL POPUP GANTIN ALERT
 function showModal(text) {
   document.getElementById('modal-text').innerText = text;
   document.getElementById('modal-popup').classList.remove('hidden');
@@ -33,6 +32,10 @@ async function apiCall(action, payload = {}) {
 }
 
 async function renderLogin() {
+  // HAPUS CACHE TOTAL PAS LOGIN
+  sessionStorage.clear();
+  currentUser = null;
+  
   const res = await apiCall('get_setting');
   if (res.status === 'success') {
     appSetting = res.data;
@@ -68,6 +71,7 @@ async function login() {
   const res = await apiCall('login', { username, password });
   if (res.status === 'success') {
     currentUser = res.data;
+    console.log('[LOGIN] Data user:', currentUser);
     appSetting = res.setting || {};
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
@@ -84,13 +88,21 @@ function logout() {
 }
 
 async function renderHome() {
+  // PAKSA AMBIL USER TERBARU DARI SERVER
+  const loginRes = await apiCall('login', { username: currentUser.Username, password: currentUser.Password });
+  if (loginRes.status === 'success') {
+    currentUser = loginRes.data;
+    sessionStorage.setItem('user', JSON.stringify(currentUser));
+  }
+  
+  console.log('[HOME] URL_Logo:', currentUser.URL_Logo);
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
   
-  // FIX CACHE FOTO: Tambah timestamp kalo dari Drive
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
-  if (foto.includes('drive.google.com')) {
-    foto += (foto.includes('?')? '&' : '?') + 't=' + new Date().getTime();
+  if (foto.includes('drive.google.com') && !foto.includes('&v=')) {
+    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
+  console.log('[HOME] Final foto URL:', foto);
   
   const logoPT = appSetting.Logo_Login || foto;
   const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || 'Nama Perusahaan';
@@ -98,7 +110,7 @@ async function renderHome() {
   app.innerHTML = `
   <div class="bg-white shadow-sm p-3 flex justify-between items-center">
     <div class="flex items-center gap-3 min-w-0 flex-1">
-      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" onerror="this.src='${foto}'">
+      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" onerror="console.log('LOGO ERROR'); this.src='${foto}'">
       <div class="min-w-0 flex-1">
         <p class="font-bold text-lg text-gray-800 truncate">${namaPT}</p>
       </div>
@@ -111,7 +123,8 @@ async function renderHome() {
   <div class="p-4 pb-24">
     <div class="text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
       <div class="flex items-center gap-3 mb-4">
-        <img src="${foto}" class="w-12 h-12 rounded-full object-cover bg-white p-1" onerror="this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
+        <img src="${foto}" id="fotoHome" class="w-12 h-12 rounded-full object-cover bg-white p-1" 
+             onerror="console.log('FOTO HOME ERROR:', this.src); this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
           <p class="font-bold">${currentUser.Nama || '-'}</p>
           <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
@@ -247,7 +260,7 @@ async function submitAbsen() {
     tipe: absenTipe
   });
 
-  showModal(res.msg); // GANTI alert() JADI INI
+  showModal(res.msg);
   if (res.status === 'success') {
     setTimeout(() => renderHome(), 1500);
   } else {
@@ -258,7 +271,7 @@ async function submitAbsen() {
 }
 
 function comingSoon() {
-  showModal('Fitur ini segera hadir!'); // GANTI alert() JADI INI
+  showModal('Fitur ini segera hadir!');
 }
 
 function renderBottomNav(active) {
@@ -276,17 +289,17 @@ function renderBottomNav(active) {
 }
 
 function renderAccount() {
-  // FIX CACHE FOTO ACCOUNT
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
   if (foto.includes('drive.google.com')) {
-    foto += (foto.includes('?')? '&' : '?') + 't=' + new Date().getTime();
+    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
     <div class="bg-white rounded-lg shadow p-4 text-center mb-4">
-      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
+      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" 
+           onerror="console.log('PREVIEW ERROR:', this.src); this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
       <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
       <button onclick="document.getElementById('fotoInput').click()" class="text-sm font-bold" style="color:#800000">Ganti Foto</button>
     </div>
@@ -332,15 +345,16 @@ async function saveAccount() {
   }
   
   const res = await apiCall('update_user', { user: newUser });
-  showModal(res.msg); // GANTI alert() JADI INI
+  console.log('[SAVE] update_user response:', res);
+  showModal(res.msg);
   
   if (res.status === 'success') {
     currentUser = res.data;
+    console.log('[SAVE] currentUser baru:', currentUser);
     sessionStorage.setItem('user', JSON.stringify(currentUser));
-    // Kasih delay 1 detik biar Drive sempet upload
     setTimeout(() => {
       renderHome();
-    }, 1000);
+    }, 1500);
   } else {
     previewImg.style.opacity = '1';
   }
