@@ -1,307 +1,3 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzvggk-r3j4Njzhjkf8_G3EtIsdzjp3vbNtCIbVI3kerscbyRUBbl1OLOX04tQsRxQ9/exec';
-const LOGO_APP = 'logo.png';
-const app = document.getElementById('app');
-let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
-let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
-let liveClockInterval = null;
-let absenStream = null;
-let isDarkMode = localStorage.getItem('darkMode') === 'true';
-let absenFoto = null;
-let absenTipe = 'IN';
-let currentLokasi = null;
-let currentCard = 0;
-let startX = 0;
-let currentX = 0;
-let isDragging = false;
-
-function applyDarkMode() {
-  if (isDarkMode) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-}
-
-function toggleDarkMode() {
-  isDarkMode =!isDarkMode;
-  localStorage.setItem('darkMode', isDarkMode);
-  applyDarkMode();
-  renderAccount();
-}
-
-function showToast(msg, type = 'success') {
-  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
-  const toast = document.createElement('div');
-  const bg = type === 'success'? 'bg-green-500' : type === 'warning'? 'bg-orange-500' : 'bg-red-500';
-  const icon = type === 'success'? 'ri-check-line' : type === 'warning'? 'ri-alert-line' : 'ri-close-line';
-  toast.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-lg shadow-2xl z-[200] flex items-center gap-2 transition-all duration-300`;
-  toast.style.transform = 'translate(-50%, -100px)';
-  toast.innerHTML = `<i class="${icon} text-xl"></i><p class="font-semibold text-sm">${msg}</p>`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
-  setTimeout(() => {
-    toast.style.transform = 'translate(-50%, -100px)';
-    setTimeout(() => toast.remove(), 200);
-  }, 2000);
-}
-
-async function apiCall(action, payload = {}) {
-  try {
-    console.log('API CALL:', action, payload); // DEBUG
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ action,...payload }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    });
-    const text = await res.text();
-    const result = JSON.parse(text);
-    console.log('API RESPONSE:', result); // DEBUG
-    return result;
-  } catch (e) {
-    console.error('API ERROR:', e);
-    showToast('Gagal konek server', 'error');
-    return { status: 'error', msg: e.message };
-  }
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h >= 4 && h < 11) return { text: 'Selamat Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
-  if (h >= 11 && h < 15) return { text: 'Selamat Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
-  if (h >= 15 && h < 18) return { text: 'Selamat Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
-  return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
-}
-
-async function renderLogin() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
-  sessionStorage.clear();
-  currentUser = null;
-  applyDarkMode();
-
-  const res = await apiCall('get_setting');
-  if (res.status === 'success') {
-    appSetting = res.data;
-    sessionStorage.setItem('setting', JSON.stringify(appSetting));
-  }
-
-  app.innerHTML = `
-  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
-      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
-      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">ABSENSI KEHADIRAN TERPADU</h1>
-      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
-      <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
-    </div>
-  </div>`;
-}
-
-async function login() {
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  const errEl = document.getElementById('err');
-  if (!username ||!password) {
-    showToast('Username & Password wajib diisi', 'error');
-    return;
-  }
-  errEl.innerText = 'Login...';
-  const res = await apiCall('login', { username, password });
-  if (res.status === 'success') {
-    currentUser = res.data;
-    appSetting = res.setting || {};
-    sessionStorage.setItem('user', JSON.stringify(currentUser));
-    sessionStorage.setItem('setting', JSON.stringify(appSetting));
-    console.log('LOGIN SUCCESS, USER:', currentUser); // DEBUG
-    showToast('Login berhasil!', 'success');
-    setTimeout(() => renderHome(), 500);
-  } else {
-    errEl.innerText = res.msg;
-    showToast(res.msg, 'error');
-  }
-}
-
-function logout() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
-  sessionStorage.removeItem('user');
-  currentUser = null;
-  renderLogin();
-}
-
-async function renderHome() {
-  console.log('RENDER HOME, USER:', currentUser); // DEBUG
-  
-  const [dashboardRes, rekapRes] = await Promise.all([
-    apiCall('get_dashboard', { nama: currentUser.Nama }),
-    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
-  ]);
-
-  let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
-  fotoUser = fotoUser.replace(/\s/g, '');
-  if (fotoUser.includes('uc?export=view&id=')) {
-    const fileId = fotoUser.split('id=')[1].split('&')[0];
-    fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-  if (fotoUser.includes('drive.google.com')) {
-    fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
-
-  const jamMasuk = dashboardRes.jamMasuk || '00:00';
-  const jamPulang = dashboardRes.jamPulang || '00:00';
-  const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
-  const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-
-  let statusText = 'Belum Absen Masuk';
-  let statusColor = 'bg-red-500';
-  let statusIcon = 'ri-close-circle-line';
-
-  if (sudahPulang) {
-    statusText = `Sudah Pulang ${jamPulang}`;
-    statusColor = 'bg-blue-500';
-    statusIcon = 'ri-home-4-line';
-  } else if (sudahMasuk) {
-    statusText = `Sudah Masuk ${jamMasuk}`;
-    statusColor = 'bg-green-500';
-    statusIcon = 'ri-checkbox-circle-line';
-  }
-
-  // FIX: Ambil statistik dari backend, bukan hitung manual
-  let totalHadir = 0;
-  let totalIzin = 0;
-  let totalAlpa = 0;
-  
-  if (rekapRes.status === 'success' && rekapRes.statistik) {
-    totalHadir = rekapRes.statistik.hadir || 0;
-    totalAlpa = rekapRes.statistik.alpa || 0;
-    console.log('STATISTIK DARI SERVER:', rekapRes.statistik); // DEBUG
-  }
-
-  const greeting = getGreeting();
-
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
-    <div class="flex items-center gap-2 min-w-0 flex-1">
-      <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
-      <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap"
-           style="font-size: clamp(11px, 3.5vw, 16px);">
-           ABSENSI KEHADIRAN TERPADU
-        </p>
-      </div>
-    </div>
-    <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
-      <i class="ri-notification-3-line"></i>
-      <i class="ri-menu-line"></i>
-    </div>
-  </div>
-
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="mb-4">
-      <div class="flex items-center gap-2 mb-1">
-        <i class="${greeting.icon} text-2xl ${greeting.color}"></i>
-        <p class="text-lg font-bold text-gray-800 dark:text-white">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
-      </div>
-      <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
-      <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
-    </div>
-
-    <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="${statusIcon} text-3xl"></i>
-          <div>
-            <p class="text-xs opacity-90">Status Hari Ini</p>
-            <p class="font-bold text-lg">${statusText}</p>
-          </div>
-        </div>
-        <i class="ri-arrow-right-s-line text-2xl"></i>
-      </div>
-      <div id="countdownPulang" class="text-xs mt-2 opacity-90"></div>
-    </div>
-
-    <div class="relative overflow-hidden rounded-2xl" id="swipeWrapper">
-      <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
-        <div class="w-full flex-shrink-0">
-          <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-3">
-                <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg">
-                <div>
-                  <p class="font-bold text-lg">${currentUser.Nama}</p>
-                  <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
-                </div>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
-                <i class="ri-login-circle-line text-3xl mb-1"></i>
-                <p class="font-bold text-sm">Absen Masuk</p>
-              </button>
-              <button onclick="quickAbsen('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
-                <i class="ri-logout-circle-line text-3xl mb-1"></i>
-                <p class="font-bold text-sm">Absen Pulang</p>
-              </button>
-            </div>
-            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">
-              Buka Kamera Absen
-            </button>
-          </div>
-        </div>
-
-        <div class="w-full flex-shrink-0">
-          <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow-xl">
-            <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
-            <div class="grid grid-cols-3 gap-3 text-center mb-4">
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalHadir}</p>
-                <p class="text-xs opacity-90 mt-1">Hadir</p>
-              </div>
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalIzin}</p>
-                <p class="text-xs opacity-90 mt-1">Izin</p>
-              </div>
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalAlpa}</p>
-                <p class="text-xs opacity-90 mt-1">Alpha</p>
-              </div>
-            </div>
-            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">
-              Lihat Detail Rekap
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-center gap-2 mt-3">
-        <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
-        <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
-      </div>
-      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
-        <i class="ri-drag-move-line"></i> Geser untuk lihat statistik
-      </p>
-    </div>
-
-    <div class="grid grid-cols-4 gap-4 text-center mt-6 text-xs">
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-mail-send-line text-3xl text-orange-500"></i>Izin</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-suitcase-line text-3xl text-sky-600"></i>Cuti</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-time-line text-3xl text-gray-700 dark:text-gray-400"></i>Lembur</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-walk-line text-3xl text-red-600"></i>Patroli</button>
-      <div></div>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-information-line text-3xl text-gray-500"></i>Info</button>
-      <button onclick="logout()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-logout-box-r-line text-3xl text-black dark:text-white"></i>Keluar</button>
-    </div>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-
-  applyDarkMode();
-  startLiveClock();
-  updateCountdown(sudahMasuk, sudahPulang);
-  initSwipeGesture();
-}
-
 function initSwipeGesture() {
   const wrapper = document.getElementById('swipeWrapper');
   if (!wrapper) return;
@@ -515,7 +211,7 @@ async function submitAbsen() {
   statusEl.innerText = '';
   const alamat = currentLokasi? currentLokasi.alamat : document.getElementById('alamatText').innerText;
   const res = await apiCall('absen', {
-    nama: currentUser.Nama,
+    nama: currentUser.Nama.trim(),
     lokasiWajib: alamat,
     foto: absenFoto,
     tipe: absenTipe,
@@ -538,14 +234,14 @@ function comingSoon() {
 
 function renderBottomNav(active) {
   return `
-  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-2 shadow-lg">
-    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'}">
-      <i class="ri-home-5-fill text-xl"></i><p>Home</p>
+  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
+    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+      <i class="ri-home-5-fill text-2xl"></i>
+      <p class="font-semibold">Home</p>
     </button>
-    <button class="flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400"><i class="ri-building-4-line text-xl"></i><p>Company</p></button>
-    <button class="flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400"><i class="ri-information-line text-xl"></i><p>About</p></button>
-    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'}">
-      <i class="ri-user-3-line text-xl"></i><p>Account</p>
+    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+      <i class="ri-user-3-fill text-2xl"></i>
+      <p class="font-semibold">Account</p>
     </button>
   </div>`;
 }
@@ -615,7 +311,7 @@ function previewFoto(event) {
 
 async function saveAccount() {
   const newUser = {...currentUser };
-  ['Nama', 'Jabatan', 'Lokasi', 'Perusahaan', 'Alamat', 'No_Tlpn', 'Email', 'Password'].forEach(f => {
+  ['Nama', 'Jabatan', 'Unit_Kerja', 'Password'].forEach(f => {
     const el = document.getElementById(f);
     if (el && el.value) newUser[f] = el.value;
   });
@@ -698,9 +394,9 @@ async function loadRekapBulan() {
   }
 
   content.innerHTML = `
-    <div class="text-center py-8">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-[#800000]"></div>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-3">Memuat data...</p>
+    <div class="space-y-3 animate-pulse">
+      <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
     </div>`;
 
   const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim() });
@@ -710,114 +406,160 @@ async function loadRekapBulan() {
     return;
   }
 
-  const [year, month] = bulan.split('-');
-  const data = res.data.filter(r => {
-    if (!r.Tanggal) return false;
-    const tgl = r.TanggalRaw || r.Tanggal;
-    return tgl.startsWith(`${year}-${month}`);
+  const [year, month] = bulan.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const dataMap = {};
+  
+  res.data.forEach(r => {
+    if (r.TanggalRaw && r.TanggalRaw.startsWith(`${year}-${String(month).padStart(2,'0')}`)) {
+      const day = parseInt(r.TanggalRaw.split('-')[2]);
+      dataMap[day] = r;
+    }
   });
 
-  if (data.length === 0) {
-    content.innerHTML = `
-      <div class="text-center py-12 text-gray-400 dark:text-gray-600">
-        <i class="ri-file-list-3-line text-5xl mb-3"></i>
-        <p class="text-sm font-semibold">Tidak ada data absensi</p>
-        <p class="text-xs mt-1">Bulan ${document.getElementById('bulanRekap').selectedOptions[0].text}</p>
-      </div>`;
-    return;
-  }
+  const totalHadir = Object.values(dataMap).filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
+  const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-  let totalHadir = data.filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
-
-  content.innerHTML = `
+  let html = `
     <div class="bg-gradient-to-r from-[#800000] to-[#a00000] text-white rounded-xl p-4 mb-4 shadow-lg">
       <div class="flex justify-between items-center">
         <div>
-          <p class="text-xs opacity-80">Total Kehadiran</p>
-          <p class="text-3xl font-bold">${totalHadir}</p>
+          <p class="text-xs opacity-80">Kehadiran ${namaBulan[month-1]} ${year}</p>
+          <p class="text-3xl font-bold">${totalHadir}/${daysInMonth}</p>
           <p class="text-xs opacity-80 mt-1">hari</p>
         </div>
         <div class="text-right">
-          <i class="ri-calendar-check-line text-5xl opacity-50"></i>
+          <div class="text-2xl font-bold">${Math.round(totalHadir/daysInMonth*100)}%</div>
+          <p class="text-xs opacity-80">Tingkat hadir</p>
         </div>
       </div>
     </div>
 
-    <div class="space-y-2">
-      ${data.map((r, idx) => {
-        const masuk = r['Jam Masuk'] || '-';
-        const pulang = r['Jam Pulang'] || '-';
-        const durasi = r.Durasi || '-';
-        const isAlpha = masuk === '-' && pulang === '-';
-        const lokasi = r.Lokasi || '-';
-        const lat = r.Latitude || '';
-        const lon = r.Longitude || '';
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+      <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
+        <div>M</div><div>S</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
+      </div>
+      <div class="grid grid-cols-7 gap-2">`;
 
-        return `
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md active:scale-[0.98]"
-             onclick="toggleDetail(${idx})">
-          <div class="p-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-lg ${isAlpha? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'} flex items-center justify-center flex-shrink-0">
-                <i class="ri-${isAlpha? 'close' : 'check'}-line text-2xl ${isAlpha? 'text-red-600' : 'text-green-600'}"></i>
-              </div>
-              <div>
-                <p class="font-bold text-gray-800 dark:text-white">${formatTanggal(r.Tanggal)}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">${isAlpha? 'Tidak Hadir' : 'Hadir'}</p>
-              </div>
-            </div>
-            <i id="arrow-${idx}" class="ri-arrow-down-s-line text-2xl text-gray-400 transition-transform"></i>
-          </div>
+  for(let i=0; i<firstDay; i++){
+    html += `<div></div>`;
+  }
 
-          <div id="detail-${idx}" class="hidden bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700 px-4 py-3">
-            <div class="grid grid-cols-3 gap-3 text-center mb-3">
-              <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
-                <p class="font-bold text-sm text-gray-800 dark:text-white">${masuk}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulang</p>
-                <p class="font-bold text-sm text-gray-800 dark:text-white">${pulang}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
-                <p class="font-bold text-sm text-[#800000]">${durasi}</p>
-              </div>
-            </div>
-            ${lokasi!== '-'? `
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-              <div class="flex items-start gap-2">
-                <i class="ri-map-pin-line text-gray-500 dark:text-gray-400 mt-0.5"></i>
-                <div class="flex-1">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Lokasi Absen</p>
-                  <p class="text-sm text-gray-800 dark:text-white mb-2">${lokasi}</p>
-                  ${lat && lon? `
-                  <button onclick="event.stopPropagation(); window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')"
-                          class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-95 transition">
-                    <i class="ri-map-2-line"></i> Buka di Maps
-                  </button>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
-            ` : ''}
-          </div>
-        </div>`;
-      }).join('')}
+  for(let day=1; day<=daysInMonth; day++){
+    const r = dataMap[day];
+    let bg = 'bg-gray-100 dark:bg-gray-700';
+    let text = 'text-gray-400';
+    let status = 'alpa';
+    
+    if(r){
+      if(r['Jam Masuk'] && r['Jam Masuk']!== '-'){
+        if(r.Status === 'Terlambat'){
+          bg = 'bg-orange-500';
+          status = 'terlambat';
+        } else {
+          bg = 'bg-green-500';
+          status = 'hadir';
+        }
+        text = 'text-white';
+      } else {
+        bg = 'bg-red-500';
+        text = 'text-white';
+      }
+    }
+    
+    const today = new Date();
+    const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
+    const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
+    
+    html += `
+      <button onclick='showDetailTanggal(${day}, "${status}", ${JSON.stringify(r).replace(/"/g, '&quot;')})' 
+              class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
+        ${day}
+      </button>`;
+  }
+  
+  html += `
+      </div>
+      <div class="flex justify-center gap-4 mt-4 text-xs">
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div>Hadir</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Terlambat</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-500 rounded"></div>Alpa</div>
+      </div>
+    </div>
+
+    <div id="detailTanggal" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 hidden">
+      <p class="text-center text-gray-400 text-sm">Klik tanggal untuk lihat detail</p>
     </div>
   `;
+  
+  content.innerHTML = html;
 }
 
-function toggleDetail(idx) {
-  const detail = document.getElementById(`detail-${idx}`);
-  const arrow = document.getElementById(`arrow-${idx}`);
-  if (detail.classList.contains('hidden')) {
-    detail.classList.remove('hidden');
-    arrow.style.transform = 'rotate(180deg)';
-  } else {
-    detail.classList.add('hidden');
-    arrow.style.transform = 'rotate(0deg)';
+function showDetailTanggal(day, status, r) {
+  const el = document.getElementById('detailTanggal');
+  if (!r || status === 'alpa') {
+    el.innerHTML = `
+      <div class="text-center py-4">
+        <i class="ri-close-circle-line text-4xl text-red-500 mb-2"></i>
+        <p class="font-bold text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-sm text-red-500">Tidak Ada Data Absensi</p>
+      </div>`;
+    el.classList.remove('hidden');
+    return;
   }
+  
+  const masuk = r['Jam Masuk'] || '-';
+  const pulang = r['Jam Pulang'] || '-';
+  const durasi = r.Durasi || '-';
+  const lokasi = r.Lokasi || '-';
+  const lat = r.Latitude || '';
+  const lon = r.Longitude || '';
+  const warnaStatus = status === 'hadir'? 'text-green-600' : 'text-orange-600';
+  const iconStatus = status === 'hadir'? 'ri-checkbox-circle-line' : 'ri-time-line';
+  
+  el.innerHTML = `
+    <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+      <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
+      <div>
+        <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-xs ${warnaStatus} font-semibold">${status === 'hadir'? 'Hadir Tepat Waktu' : 'Terlambat'}</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-3 text-center mb-3">
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${masuk}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulang</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${pulang}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
+        <p class="font-bold text-sm text-[#800000]">${durasi}</p>
+      </div>
+    </div>
+    ${lokasi!== '-'? `
+    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div class="flex items-start gap-2">
+        <i class="ri-map-pin-line text-gray-500 dark:text-gray-400 mt-0.5"></i>
+        <div class="flex-1">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
+          <p class="text-sm text-gray-800 dark:text-white mb-2">${lokasi}</p>
+          ${lat && lon? `
+          <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')"
+                  class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-95 transition">
+            <i class="ri-map-2-line"></i> Buka Maps
+          </button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+    ` : ''}
+  `;
+  el.classList.remove('hidden');
+  el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
 function formatTanggal(tgl) {
