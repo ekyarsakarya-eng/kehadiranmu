@@ -1,5 +1,5 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyMxCBHwzIKwQ6504TdbvuPC2BkZsyl7yhVYJF_JQuSy4_BQ3jFD-4xM8yc59gmnYk/exec';
-const LOGO_PERMANEN = 'logo.png'; // LOGO SATPAM PERMANEN
+const LOGO_APP = 'logo.png'; // LOGO SATPAM BUAT APP AJA
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
@@ -42,11 +42,11 @@ async function renderLogin() {
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
   
-  // LOGO + TEKS LOGIN PERMANEN
+  // LOGIN PAKE LOGO SATPAM
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gray-100">
     <div class="bg-white p-8 rounded-xl shadow-lg w-11/12 max-w-sm">
-      <img src="${LOGO_PERMANEN}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
+      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
       <h1 class="font-header font-extrabold text-center mb-6 text-gray-900" style="font-size: clamp(16px, 4vw, 20px);">ABSENSI KEHADIRAN TERPADU</h1>
       <input id="username" type="text" placeholder="Username" class="w-full border p-3 rounded-lg mb-3">
       <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
@@ -92,15 +92,26 @@ async function renderHome() {
     sessionStorage.setItem('user', JSON.stringify(currentUser));
   }
 
+  console.log('[HOME] URL_Logo:', currentUser.URL_Logo);
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
 
-  // FOTO USER TETAP PAKE LOGO PERMANEN
-  const foto = LOGO_PERMANEN;
+  // FOTO USER TETAP DARI DATABASE - USER BISA GANTI
+  let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
+  fotoUser = fotoUser.replace(/\s/g, '');
+  if (fotoUser.includes('uc?export=view&id=')) {
+    const fileId = fotoUser.split('id=')[1].split('&')[0];
+    fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
+  if (fotoUser.includes('drive.google.com')) {
+    fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
+  }
+  console.log('[HOME] Final foto URL:', fotoUser);
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-3 flex justify-between items-center">
     <div class="flex items-center gap-2 min-w-0 flex-1">
-      <img src="${LOGO_PERMANEN}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
+      <!-- LOGO APP PAKE SATPAM -->
+      <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
         <p class="font-header font-extrabold text-gray-900 tracking-tight whitespace-nowrap" 
            style="font-size: clamp(11px, 3.5vw, 16px);">
@@ -116,7 +127,9 @@ async function renderHome() {
   <div class="p-4 pb-24">
     <div class="text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
       <div class="flex items-center gap-3 mb-4">
-        <img src="${foto}" class="w-12 h-12 rounded-full object-cover bg-white p-1">
+        <!-- FOTO USER TETAP FOTO USER -->
+        <img src="${fotoUser}" id="fotoHome" class="w-12 h-12 rounded-full object-cover bg-white p-1"
+             onerror="console.log('FOTO HOME ERROR:', this.src); this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
           <p class="font-bold">${currentUser.Nama || '-'}</p>
           <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
@@ -187,8 +200,8 @@ async function renderAbsen() {
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-   .then(res => res.json())
-   .then(data => {
+  .then(res => res.json())
+  .then(data => {
         document.getElementById('alamatText').innerText = data.display_name || `${latitude}, ${longitude}`;
       }).catch(() => {
         document.getElementById('alamatText').innerText = `${latitude}, ${longitude}`;
@@ -281,28 +294,81 @@ function renderBottomNav(active) {
 }
 
 function renderAccount() {
-  // FOTO USER DIGANTI LOGO PERMANEN
-  const foto = LOGO_PERMANEN;
+  // FOTO USER TETAP DARI DATABASE - BISA DIGANTI
+  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  foto = foto.replace(/\s/g, '');
+  if (foto.includes('uc?export=view&id=')) {
+    const fileId = foto.split('id=')[1].split('&')[0];
+    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
+  if (foto.includes('drive.google.com')) {
+    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
+  }
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
     <div class="bg-white rounded-lg shadow p-4 text-center mb-4">
-      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover">
-      <p class="font-header font-bold text-gray-900" style="font-size: clamp(14px, 3.5vw, 18px);">ABSENSI KEHADIRAN TERPADU</p>
+      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" 
+           onerror="console.log('PREVIEW ERROR:', this.src); this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
+      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
+      <button onclick="document.getElementById('fotoInput').click()" class="text-sm font-bold" style="color:#800000">Ganti Foto</button>
     </div>
     <div class="bg-white rounded-lg shadow p-4 space-y-3">
-      <div><label class="text-xs text-gray-500">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
+      <div><label class="text-xs text-gray-500">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border p-2 rounded-lg"></div>
       <div><label class="text-xs text-gray-500">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <div><label class="text-xs text-gray-500">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <div><label class="text-xs text-gray-500">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <div><label class="text-xs text-gray-500">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <div><label class="text-xs text-gray-500">Email</label><input id="Email" value="${currentUser.Email || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg font-bold mt-4">Logout</button>
+      <div><label class="text-xs text-gray-500">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Alamat</label><input id="Alamat" value="${currentUser.Alamat || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">No. Telpon</label><input id="No_Tlpn" value="${currentUser.No_Tlpn || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Email</label><input id="Email" value="${currentUser.Email || ''}" class="w-full border p-2 rounded-lg"></div>
+      <div><label class="text-xs text-gray-500">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border p-2 rounded-lg"></div>
+      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-lg font-bold mt-2" style="background-color:#800000">Simpan Perubahan</button>
+      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg font-bold">Logout</button>
     </div>
   </div>
   ${renderBottomNav('account')}
   `;
+}
+
+function previewFoto(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => document.getElementById('previewFoto').src = e.target.result;
+    reader.readAsDataURL(file);
+  }
+}
+
+async function saveAccount() {
+  const newUser = {...currentUser };
+  ['Nama', 'Jabatan', 'Lokasi', 'Perusahaan', 'Alamat', 'No_Tlpn', 'Email', 'Password'].forEach(f => {
+    const el = document.getElementById(f);
+    if (el && el.value) newUser[f] = el.value;
+  });
+  
+  const fotoInput = document.getElementById('fotoInput');
+  const previewImg = document.getElementById('previewFoto');
+  if (fotoInput.files[0]) {
+    previewImg.style.opacity = '0.5';
+    newUser.Foto_Profil = previewImg.src;
+  }
+  
+  const res = await apiCall('update_user', { user: newUser });
+  console.log('[SAVE] update_user response:', res);
+  showModal(res.msg);
+  
+  if (res.status === 'success') {
+    currentUser = res.data;
+    console.log('[SAVE] currentUser baru:', currentUser);
+    sessionStorage.setItem('user', JSON.stringify(currentUser));
+    setTimeout(() => {
+      renderHome();
+    }, 1500);
+  } else {
+    previewImg.style.opacity = '1';
+  }
 }
 
 async function renderRekap() {
