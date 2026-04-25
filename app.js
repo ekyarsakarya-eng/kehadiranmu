@@ -88,34 +88,41 @@ function logout() {
 }
 
 async function renderHome() {
-  // PAKSA AMBIL USER TERBARU DARI SERVER
   const loginRes = await apiCall('login', { username: currentUser.Username, password: currentUser.Password });
   if (loginRes.status === 'success') {
     currentUser = loginRes.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
   }
-  
+
   console.log('[HOME] URL_Logo:', currentUser.URL_Logo);
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
-  
+
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
-  if (foto.includes('drive.google.com') && !foto.includes('&v=')) {
+  foto = foto.replace(/\s/g, '');
+  if (foto.includes('uc?export=view&id=')) {
+    const fileId = foto.split('id=')[1].split('&')[0];
+    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
+  if (foto.includes('drive.google.com')) {
     foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
   console.log('[HOME] Final foto URL:', foto);
-  
+
   const logoPT = appSetting.Logo_Login || foto;
-  const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || 'Nama Perusahaan';
   
   app.innerHTML = `
   <div class="bg-white shadow-sm p-3 flex justify-between items-center">
-    <div class="flex items-center gap-3 min-w-0 flex-1">
-      <img src="${logoPT}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" onerror="console.log('LOGO ERROR'); this.src='${foto}'">
-      <div class="min-w-0 flex-1">
-        <p class="font-bold text-lg text-gray-800 truncate">${namaPT}</p>
+    <div class="flex items-center gap-2 min-w-0 flex-1">
+      <img src="${logoPT}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="console.log('LOGO ERROR'); this.src='${foto}'">
+      <div class="min-w-0 flex-1 overflow-hidden">
+        <!-- HEADER AUTO RESIZE -->
+        <p class="font-header font-extrabold text-gray-900 tracking-tight whitespace-nowrap" 
+           style="font-size: clamp(11px, 3.5vw, 16px);">
+           ABSENSI KEHADIRAN TERPADU
+        </p>
       </div>
     </div>
-    <div class="flex gap-4 text-xl text-gray-600 flex-shrink-0">
+    <div class="flex gap-3 text-xl text-gray-600 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
     </div>
@@ -123,7 +130,7 @@ async function renderHome() {
   <div class="p-4 pb-24">
     <div class="text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
       <div class="flex items-center gap-3 mb-4">
-        <img src="${foto}" id="fotoHome" class="w-12 h-12 rounded-full object-cover bg-white p-1" 
+        <img src="${foto}" id="fotoHome" class="w-12 h-12 rounded-full object-cover bg-white p-1"
              onerror="console.log('FOTO HOME ERROR:', this.src); this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
         <div>
           <p class="font-bold">${currentUser.Nama || '-'}</p>
