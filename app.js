@@ -377,43 +377,182 @@ async function renderRekap() {
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl"></i></button>
     <h1 class="text-xl font-bold">Riwayat Absensi</h1>
   </div>
-  <div class="p-4 pb-24" id="rekapContent">Loading...</div>
+  <div class="p-4 pb-24">
+    <!-- PILIH BULAN -->
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <label class="text-sm font-semibold text-gray-700 mb-2 block">Pilih Bulan</label>
+      <select id="bulanRekap" onchange="loadRekapBulan()" class="w-full border-2 border-gray-200 p-3 rounded-lg font-semibold text-gray-800 focus:border-[#800000] focus:outline-none">
+        <option value="">-- Pilih Bulan --</option>
+      </select>
+    </div>
+    <div id="rekapContent">
+      <div class="text-center py-12 text-gray-400">
+        <i class="ri-calendar-todo-line text-5xl mb-3"></i>
+        <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
+      </div>
+    </div>
+  </div>
   ${renderBottomNav('home')}
   `;
   
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama });
+  // GENERATE LIST BULAN 12 BULAN TERAKHIR
+  const bulanSelect = document.getElementById('bulanRekap');
+  const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const now = new Date();
+  
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const value = `${year}-${month}`;
+    const label = `${namaBulan[d.getMonth()]} ${year}`;
+    bulanSelect.innerHTML += `<option value="${value}">${label}</option>`;
+  }
+  
+  // AUTO PILIH BULAN INI
+  const bulanIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  bulanSelect.value = bulanIni;
+  loadRekapBulan();
+}
+
+async function loadRekapBulan() {
+  const bulan = document.getElementById('bulanRekap').value;
   const content = document.getElementById('rekapContent');
   
-  if (res.status!== 'success') {
-    content.innerHTML = `<p class="text-red-500 text-center">Gagal load: ${res.msg}</p>`;
+  if (!bulan) {
+    content.innerHTML = `
+      <div class="text-center py-12 text-gray-400">
+        <i class="ri-calendar-todo-line text-5xl mb-3"></i>
+        <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
+      </div>`;
     return;
   }
   
-  const data = res.data.reverse();
+  content.innerHTML = `
+    <div class="text-center py-8">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-[#800000]"></div>
+      <p class="text-sm text-gray-500 mt-3">Memuat data...</p>
+    </div>`;
+  
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama });
+  
+  if (res.status !== 'success') {
+    content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
+    return;
+  }
+  
+  // FILTER DATA BERDASARKAN BULAN
+  const [year, month] = bulan.split('-');
+  const data = res.data.filter(r => {
+    if (!r.Tanggal) return false;
+    // Format tanggal di Sheet: dd/mm/yyyy atau yyyy-mm-dd
+    const tgl = r.Tanggal.includes('/') ? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
+    return tgl.startsWith(`${year}-${month}`);
+  }).reverse();
+  
   if (data.length === 0) {
-    content.innerHTML = `<p class="text-gray-500 text-center">Belum ada data absensi</p>`;
+    content.innerHTML = `
+      <div class="text-center py-12 text-gray-400">
+        <i class="ri-file-list-3-line text-5xl mb-3"></i>
+        <p class="text-sm font-semibold">Tidak ada data absensi</p>
+        <p class="text-xs mt-1">Bulan ${document.getElementById('bulanRekap').selectedOptions[0].text}</p>
+      </div>`;
     return;
   }
   
-  content.innerHTML = data.map(r => `
-    <div class="bg-white rounded-lg shadow p-4 mb-3">
-      <div class="flex justify-between items-start mb-2">
+  // HITUNG TOTAL
+  let totalHadir = data.filter(r => r['Jam Masuk'] && r['Jam Masuk'] !== '-').length;
+  
+  content.innerHTML = `
+    <!-- SUMMARY CARD -->
+    <div class="bg-gradient-to-r from-[#800000] to-[#a00000] text-white rounded-xl p-4 mb-4 shadow-lg">
+      <div class="flex justify-between items-center">
         <div>
-          <p class="font-bold">${r.Tanggal}</p>
-          <p class="text-xs text-gray-500">${r.Lokasi || '-'}</p>
+          <p class="text-xs opacity-80">Total Kehadiran</p>
+          <p class="text-3xl font-bold">${totalHadir}</p>
+          <p class="text-xs opacity-80 mt-1">hari</p>
         </div>
         <div class="text-right">
-          <p class="text-xs text-gray-500">Durasi</p>
-          <p class="font-bold text-sm">${r.Durasi || '-'}</p>
+          <i class="ri-calendar-check-line text-5xl opacity-50"></i>
         </div>
       </div>
-      <div class="flex justify-between text-center bg-gray-50 p-2 rounded">
-        <div><p class="text-xs text-gray-500">Masuk</p><p class="font-bold">${r['Jam Masuk'] || '-'}</p></div>
-        <div><p class="text-xs text-gray-500">Pulang</p><p class="font-bold">${r['Jam Pulang'] || '-'}</p></div>
-      </div>
-      ${r.Foto_URL? `<img src="${r.Foto_URL}" class="w-full h-32 object-cover rounded mt-2" />` : ''}
     </div>
-  `).join('');
+    
+    <!-- LIST DATA -->
+    <div class="space-y-2">
+      ${data.map((r, idx) => {
+        const masuk = r['Jam Masuk'] || '-';
+        const pulang = r['Jam Pulang'] || '-';
+        const durasi = r.Durasi || '-';
+        const isAlpha = masuk === '-' && pulang === '-';
+        
+        return `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md active:scale-[0.98]" 
+             onclick="toggleDetail(${idx})">
+          <div class="p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg ${isAlpha ? 'bg-red-100' : 'bg-green-100'} flex items-center justify-center flex-shrink-0">
+                <i class="ri-${isAlpha ? 'close' : 'check'}-line text-2xl ${isAlpha ? 'text-red-600' : 'text-green-600'}"></i>
+              </div>
+              <div>
+                <p class="font-bold text-gray-800">${formatTanggal(r.Tanggal)}</p>
+                <p class="text-xs text-gray-500">${isAlpha ? 'Tidak Hadir' : 'Hadir'}</p>
+              </div>
+            </div>
+            <i id="arrow-${idx}" class="ri-arrow-down-s-line text-2xl text-gray-400 transition-transform"></i>
+          </div>
+          
+          <!-- DETAIL EXPAND -->
+          <div id="detail-${idx}" class="hidden bg-gray-50 border-t border-gray-100 px-4 py-3">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Masuk</p>
+                <p class="font-bold text-sm text-gray-800">${masuk}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Pulang</p>
+                <p class="font-bold text-sm text-gray-800">${pulang}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Durasi</p>
+                <p class="font-bold text-sm text-[#800000]">${durasi}</p>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function toggleDetail(idx) {
+  const detail = document.getElementById(`detail-${idx}`);
+  const arrow = document.getElementById(`arrow-${idx}`);
+  if (detail.classList.contains('hidden')) {
+    detail.classList.remove('hidden');
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    detail.classList.add('hidden');
+    arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
+function formatTanggal(tgl) {
+  if (!tgl) return '-';
+  // Convert dd/mm/yyyy atau yyyy-mm-dd ke format bagus
+  let d, m, y;
+  if (tgl.includes('/')) {
+    [d, m, y] = tgl.split('/');
+  } else if (tgl.includes('-')) {
+    [y, m, d] = tgl.split('-');
+  } else {
+    return tgl;
+  }
+  const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const date = new Date(y, m - 1, d);
+  const hari = namaHari[date.getDay()];
+  return `${hari}, ${parseInt(d)} ${namaBulan[m - 1]} ${y}`;
 }
 
 (function init() {
