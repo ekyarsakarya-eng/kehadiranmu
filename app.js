@@ -1,8 +1,30 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyMxCBHwzIKwQ6504TdbvuPC2BkZsyl7yhVYJF_JQuSy4_BQ3jFD-4xM8yc59gmnYk/exec';
-const LOGO_APP = 'logo.png'; // LOGO SATPAM BUAT APP AJA
+const LOGO_APP = 'logo.png';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
+let liveClockInterval = null;
+let absenStream = null;
+
+// TOAST NOTIF + HAPTIC
+function showToast(msg, type = 'success') {
+  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
+  
+  const toast = document.createElement('div');
+  const bg = type === 'success'? 'bg-green-500' : 'bg-red-500';
+  const icon = type === 'success'? 'ri-check-line' : 'ri-close-line';
+  
+  toast.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-lg shadow-2xl z-[200] flex items-center gap-2 transition-all duration-300`;
+  toast.style.transform = 'translate(-50%, -100px)';
+  toast.innerHTML = `<i class="${icon} text-xl"></i><p class="font-semibold text-sm">${msg}</p>`;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
+  setTimeout(() => {
+    toast.style.transform = 'translate(-50%, -100px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
 
 function showModal(text) {
   document.getElementById('modal-text').innerText = text;
@@ -27,12 +49,21 @@ async function apiCall(action, payload = {}) {
     return JSON.parse(text);
   } catch (e) {
     console.error('API Error:', e);
-    app.innerHTML = `<div class="p-8 text-center text-red-600"><h1 class="font-bold">Gagal Konek Server</h1><p class="text-sm mt-2">${e.message}</p></div>`;
+    showToast('Gagal konek server', 'error');
     return { status: 'error', msg: 'Gagal konek ke server: ' + e.message };
   }
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h >= 4 && h < 11) return { text: 'Selamat Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
+  if (h >= 11 && h < 15) return { text: 'Selamat Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
+  if (h >= 15 && h < 18) return { text: 'Selamat Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
+  return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
+}
+
 async function renderLogin() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
   sessionStorage.clear();
   currentUser = null;
   
@@ -42,15 +73,14 @@ async function renderLogin() {
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
   
-  // LOGIN PAKE LOGO SATPAM
   app.innerHTML = `
-  <div class="flex items-center justify-center h-screen bg-gray-100">
-    <div class="bg-white p-8 rounded-xl shadow-lg w-11/12 max-w-sm">
-      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover">
+  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
+      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
       <h1 class="font-header font-extrabold text-center mb-6 text-gray-900" style="font-size: clamp(16px, 4vw, 20px);">ABSENSI KEHADIRAN TERPADU</h1>
-      <input id="username" type="text" placeholder="Username" class="w-full border p-3 rounded-lg mb-3">
-      <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-3">
-      <button onclick="login()" class="w-full text-white p-3 rounded-lg font-bold" style="background-color:#800000">Login</button>
+      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
+      <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
+      <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
       <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
       <p class="text-xs text-gray-400 text-center mt-4">Hubungi admin jika belum punya akun</p>
     </div>
@@ -62,24 +92,26 @@ async function login() {
   const password = document.getElementById('password').value;
   const errEl = document.getElementById('err');
   if (!username ||!password) {
-    errEl.innerText = 'Username & Password wajib diisi';
+    showToast('Username & Password wajib diisi', 'error');
     return;
   }
   errEl.innerText = 'Login...';
   const res = await apiCall('login', { username, password });
   if (res.status === 'success') {
     currentUser = res.data;
-    console.log('[LOGIN] Data user:', currentUser);
     appSetting = res.setting || {};
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
-    renderHome();
+    showToast('Login berhasil!', 'success');
+    setTimeout(() => renderHome(), 500);
   } else {
     errEl.innerText = res.msg;
+    showToast(res.msg, 'error');
   }
 }
 
 function logout() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
   sessionStorage.removeItem('user');
   currentUser = null;
   renderLogin();
@@ -92,10 +124,9 @@ async function renderHome() {
     sessionStorage.setItem('user', JSON.stringify(currentUser));
   }
 
-  console.log('[HOME] URL_Logo:', currentUser.URL_Logo);
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
+  const rekapRes = await apiCall('get_rekap_user', { nama: currentUser.Nama });
 
-  // FOTO USER TETAP DARI DATABASE - USER BISA GANTI
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   fotoUser = fotoUser.replace(/\s/g, '');
   if (fotoUser.includes('uc?export=view&id=')) {
@@ -105,12 +136,43 @@ async function renderHome() {
   if (fotoUser.includes('drive.google.com')) {
     fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
-  console.log('[HOME] Final foto URL:', fotoUser);
+
+  const jamMasuk = res.jamMasuk || '00:00';
+  const jamPulang = res.jamPulang || '00:00';
+  const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
+  const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
+  
+  let statusText = 'Belum Absen Masuk';
+  let statusColor = 'bg-red-500';
+  let statusIcon = 'ri-close-circle-line';
+  
+  if (sudahPulang) {
+    statusText = `Sudah Pulang ${jamPulang}`;
+    statusColor = 'bg-blue-500';
+    statusIcon = 'ri-home-4-line';
+  } else if (sudahMasuk) {
+    statusText = `Sudah Masuk ${jamMasuk}`;
+    statusColor = 'bg-green-500';
+    statusIcon = 'ri-checkbox-circle-line';
+  }
+
+  let totalHadir = 0;
+  if (rekapRes.status === 'success') {
+    const now = new Date();
+    const bulanIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const dataBulan = rekapRes.data.filter(r => {
+      if (!r.Tanggal) return false;
+      const tgl = r.Tanggal.includes('/')? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
+      return tgl.startsWith(bulanIni);
+    });
+    totalHadir = dataBulan.filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
+  }
+
+  const greeting = getGreeting();
   
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-3 flex justify-between items-center">
+  <div class="bg-white shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
-      <!-- LOGO APP PAKE SATPAM -->
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
         <p class="font-header font-extrabold text-gray-900 tracking-tight whitespace-nowrap" 
@@ -124,74 +186,217 @@ async function renderHome() {
       <i class="ri-menu-line"></i>
     </div>
   </div>
+  
   <div class="p-4 pb-24">
-    <div class="text-white rounded-2xl p-4 shadow-lg" style="background-color:#800000">
-      <div class="flex items-center gap-3 mb-4">
-        <!-- FOTO USER TETAP FOTO USER -->
-        <img src="${fotoUser}" id="fotoHome" class="w-12 h-12 rounded-full object-cover bg-white p-1"
-             onerror="console.log('FOTO HOME ERROR:', this.src); this.src='https://placehold.co/48x48/FFFFFF/800000?text=U'">
-        <div>
-          <p class="font-bold">${currentUser.Nama || '-'}</p>
-          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
+    <div class="mb-4">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="${greeting.icon} text-2xl ${greeting.color}"></i>
+        <p class="text-lg font-bold text-gray-800">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
+      </div>
+      <p id="liveClock" class="text-4xl font-extrabold text-gray-900 font-header"></p>
+      <p id="liveDate" class="text-sm text-gray-500"></p>
+    </div>
+
+    <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="${statusIcon} text-3xl"></i>
+          <div>
+            <p class="text-xs opacity-90">Status Hari Ini</p>
+            <p class="font-bold text-lg">${statusText}</p>
+          </div>
+        </div>
+        <i class="ri-arrow-right-s-line text-2xl"></i>
+      </div>
+      <div id="countdownPulang" class="text-xs mt-2 opacity-90"></div>
+    </div>
+
+    <div class="relative overflow-hidden rounded-2xl">
+      <div id="swipeContainer" class="flex transition-transform duration-300" style="transform: translateX(0%);">
+        <div class="w-full flex-shrink-0">
+          <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg">
+                <div>
+                  <p class="font-bold text-lg">${currentUser.Nama}</p>
+                  <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
+                <i class="ri-login-circle-line text-3xl mb-1"></i>
+                <p class="font-bold text-sm">Absen Masuk</p>
+              </button>
+              <button onclick="quickAbsen('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
+                <i class="ri-logout-circle-line text-3xl mb-1"></i>
+                <p class="font-bold text-sm">Absen Pulang</p>
+              </button>
+            </div>
+            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">
+              Buka Kamera Absen
+            </button>
+          </div>
+        </div>
+
+        <div class="w-full flex-shrink-0">
+          <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow-xl">
+            <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
+            <div class="grid grid-cols-3 gap-3 text-center mb-4">
+              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                <p class="text-3xl font-bold">${totalHadir}</p>
+                <p class="text-xs opacity-90 mt-1">Hadir</p>
+              </div>
+              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                <p class="text-3xl font-bold">0</p>
+                <p class="text-xs opacity-90 mt-1">Izin</p>
+              </div>
+              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                <p class="text-3xl font-bold">0</p>
+                <p class="text-xs opacity-90 mt-1">Alpha</p>
+              </div>
+            </div>
+            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">
+              Lihat Detail Rekap
+            </button>
+          </div>
         </div>
       </div>
-      <div class="flex justify-between text-center bg-black bg-opacity-20 p-3 rounded-lg">
-        <div><p class="text-xs opacity-80">Masuk</p><p class="font-bold text-lg">${res.jamMasuk || '00:00'}</p></div>
-        <div><p class="text-xs opacity-80">Pulang</p><p class="font-bold text-lg">${res.jamPulang || '00:00'}</p></div>
-        <div><p class="text-xs opacity-80">Shift</p><p class="font-bold text-lg">N/A</p></div>
+      
+      <div class="flex justify-center gap-2 mt-3">
+        <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
+        <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 transition"></button>
       </div>
     </div>
 
     <div class="grid grid-cols-4 gap-4 text-center mt-6 text-xs">
-      <button onclick="renderAbsen()" class="flex flex-col items-center gap-1"><i class="ri-fingerprint-line text-3xl text-blue-600"></i>Absensi</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-mail-send-line text-3xl text-orange-500"></i>Izin</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-suitcase-line text-3xl text-sky-600"></i>Cuti</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-time-line text-3xl text-gray-700"></i>Lembur</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
-      <button onclick="renderRekap()" class="flex flex-col items-center gap-1"><i class="ri-file-list-3-line text-3xl text-green-600"></i>Lihat Absen</button>
-      <button onclick="comingSoon()" class="flex flex-col items-center gap-1"><i class="ri-walk-line text-3xl text-red-600"></i>Patroli</button>
-      <button onclick="logout()" class="flex flex-col items-center gap-1"><i class="ri-logout-box-r-line text-3xl text-black"></i>Keluar</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-mail-send-line text-3xl text-orange-500"></i>Izin</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-suitcase-line text-3xl text-sky-600"></i>Cuti</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-time-line text-3xl text-gray-700"></i>Lembur</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-walk-line text-3xl text-red-600"></i>Patroli</button>
+      <button onclick="renderAccount()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-user-3-line text-3xl text-indigo-600"></i>Account</button>
+      <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-information-line text-3xl text-gray-500"></i>Info</button>
+      <button onclick="logout()" class="flex flex-col items-center gap-1 active:scale-90 transition"><i class="ri-logout-box-r-line text-3xl text-black"></i>Keluar</button>
     </div>
   </div>
   ${renderBottomNav('home')}
   `;
+  
+  startLiveClock();
+  updateCountdown(sudahMasuk, sudahPulang);
+}
+
+function startLiveClock() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
+  
+  function update() {
+    const now = new Date();
+    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const tgl = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const clockEl = document.getElementById('liveClock');
+    const dateEl = document.getElementById('liveDate');
+    if (clockEl) clockEl.innerText = jam;
+    if (dateEl) dateEl.innerText = tgl;
+  }
+  
+  update();
+  liveClockInterval = setInterval(update, 1000);
+}
+
+function updateCountdown(sudahMasuk, sudahPulang) {
+  if (!sudahMasuk || sudahPulang) return;
+  
+  const el = document.getElementById('countdownPulang');
+  if (!el) return;
+  
+  const now = new Date();
+  const pulang = new Date();
+  pulang.setHours(17, 0, 0, 0);
+  
+  if (now > pulang) {
+    el.innerText = 'Waktunya pulang!';
+    return;
+  }
+  
+  const diff = pulang - now;
+  const jam = Math.floor(diff / 3600000);
+  const menit = Math.floor((diff % 3600000) / 60000);
+  el.innerText = `Pulang dalam ${jam} jam ${menit} menit`;
+  
+  setTimeout(() => updateCountdown(true, false), 60000);
+}
+
+let currentCard = 0;
+function swipeCard(idx) {
+  currentCard = idx;
+  const container = document.getElementById('swipeContainer');
+  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
+  
+  document.getElementById('dot-0').className = idx === 0? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 transition';
+  document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 transition';
+}
+
+async function quickAbsen(tipe) {
+  showToast(`Membuka kamera untuk Absen ${tipe}...`, 'success');
+  setTimeout(() => renderAbsen(), 300);
 }
 
 let absenFoto = null;
 let absenTipe = 'IN';
 
 async function renderAbsen() {
+  if (absenStream) {
+    absenStream.getTracks().forEach(t => t.stop());
+    absenStream = null;
+  }
+  
   let alamat = 'Mendeteksi lokasi...';
   let jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   let tanggal = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-4 flex items-center gap-3">
+  <div class="bg-white shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl"></i></button>
     <h1 class="text-xl font-bold">Absen</h1>
   </div>
   <div class="p-4 pb-24 text-center">
     <p id="alamatText" class="text-sm text-gray-600 mb-4">${alamat}</p>
-    <p class="text-5xl font-bold">${jam}</p>
+    <p class="text-5xl font-bold font-header">${jam}</p>
     <p class="text-lg text-gray-700 mb-6">${tanggal}</p>
     
     <div class="relative w-64 h-64 mx-auto mb-6">
       <video id="camera" class="w-full h-full object-cover rounded-full bg-gray-200" autoplay playsinline></video>
       <img id="previewAbsen" class="w-full h-full object-cover rounded-full bg-gray-200 hidden" />
-      <button onclick="ambilFoto()" class="absolute inset-0 flex items-center justify-center">
-        <div id="iconKamera" class="w-20 h-20 bg-white bg-opacity-80 rounded-full flex items-center justify-center">
-          <i class="ri-camera-add-line text-4xl text-gray-600"></i>
+      
+      <div id="faceFrame" class="absolute inset-0 pointer-events-none">
+        <svg class="w-full h-full" viewBox="0 0 256 256">
+          <circle cx="128" cy="128" r="110" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="10 5" opacity="0.6">
+            <animate attributeName="stroke-dashoffset" from="0" to="15" dur="1s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="128" cy="128" r="100" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.3"/>
+        </svg>
+        <div id="faceStatus" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-xs font-semibold">
+          Posisikan wajah di tengah
+        </div>
+      </div>
+      
+      <button onclick="ambilFoto()" id="btnCapture" class="absolute inset-0 flex items-center justify-center">
+        <div id="iconKamera" class="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-xl">
+          <i class="ri-camera-line text-4xl text-gray-700"></i>
         </div>
       </button>
     </div>
     <canvas id="canvas" class="hidden"></canvas>
 
-    <div class="flex justify-center mb-6">
-      <button id="btnIn" onclick="setTipe('IN')" class="px-6 py-2 rounded-l-lg font-bold text-white" style="background-color:#3b82f6">IN</button>
-      <button id="btnOut" onclick="setTipe('OUT')" class="px-6 py-2 rounded-r-lg font-bold bg-gray-300 text-gray-600">OUT</button>
+    <div class="flex justify-center mb-6 bg-gray-100 rounded-xl p-1">
+      <button id="btnIn" onclick="setTipe('IN')" class="flex-1 px-6 py-3 rounded-lg font-bold text-white bg-blue-500 shadow-md transition">IN</button>
+      <button id="btnOut" onclick="setTipe('OUT')" class="flex-1 px-6 py-3 rounded-lg font-bold bg-transparent text-gray-600 transition">OUT</button>
     </div>
 
-    <button onclick="submitAbsen()" id="btnSubmit" class="w-full text-white p-4 rounded-xl font-bold text-lg" style="background-color:#1d4ed8" disabled>Submit</button>
+    <button onclick="submitAbsen()" id="btnSubmit" class="w-full text-white p-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>Submit Absen</button>
     <p id="statusAbsen" class="text-sm text-red-500 mt-2"></p>
   </div>
   ${renderBottomNav('home')}
@@ -200,14 +405,15 @@ async function renderAbsen() {
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-  .then(res => res.json())
-  .then(data => {
+.then(res => res.json())
+.then(data => {
         document.getElementById('alamatText').innerText = data.display_name || `${latitude}, ${longitude}`;
       }).catch(() => {
         document.getElementById('alamatText').innerText = `${latitude}, ${longitude}`;
       });
   }, () => {
     document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
+    showToast('GPS tidak aktif', 'error');
   });
 
   startCamera();
@@ -215,18 +421,34 @@ async function renderAbsen() {
 
 function setTipe(tipe) {
   absenTipe = tipe;
-  document.getElementById('btnIn').style.backgroundColor = tipe === 'IN'? '#3b82f6' : '#d1d5db';
-  document.getElementById('btnIn').style.color = tipe === 'IN'? 'white' : '#4b5563';
-  document.getElementById('btnOut').style.backgroundColor = tipe === 'OUT'? '#3b82f6' : '#d1d5db';
-  document.getElementById('btnOut').style.color = tipe === 'OUT'? 'white' : '#4b5563';
+  const btnIn = document.getElementById('btnIn');
+  const btnOut = document.getElementById('btnOut');
+  
+  if (tipe === 'IN') {
+    btnIn.className = 'flex-1 px-6 py-3 rounded-lg font-bold text-white bg-blue-500 shadow-md transition';
+    btnOut.className = 'flex-1 px-6 py-3 rounded-lg font-bold bg-transparent text-gray-600 transition';
+  } else {
+    btnOut.className = 'flex-1 px-6 py-3 rounded-lg font-bold text-white bg-blue-500 shadow-md transition';
+    btnIn.className = 'flex-1 px-6 py-3 rounded-lg font-bold bg-transparent text-gray-600 transition';
+  }
 }
 
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-    document.getElementById('camera').srcObject = stream;
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    document.getElementById('camera').srcObject = absenStream;
+    
+    setTimeout(() => {
+      const status = document.getElementById('faceStatus');
+      if (status) {
+        status.innerHTML = '<i class="ri-check-line"></i> Wajah terdeteksi';
+        status.className = 'absolute bottom-4 left-1/2 -translate-x-1/2 bg-green-500/90 text-white px-4 py-2 rounded-full text-xs font-semibold';
+      }
+    }, 2000);
+    
   } catch (err) {
     document.getElementById('statusAbsen').innerText = 'Kamera error: ' + err.message;
+    showToast('Kamera error', 'error');
   }
 }
 
@@ -234,25 +456,36 @@ function ambilFoto() {
   const video = document.getElementById('camera');
   const canvas = document.getElementById('canvas');
   const preview = document.getElementById('previewAbsen');
+  
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  absenFoto = canvas.toDataURL('image/jpeg', 0.7);
+  absenFoto = canvas.toDataURL('image/jpeg', 0.8);
+  
   preview.src = absenFoto;
   preview.classList.remove('hidden');
   video.classList.add('hidden');
+  document.getElementById('faceFrame').classList.add('hidden');
   document.getElementById('iconKamera').classList.add('hidden');
   document.getElementById('btnSubmit').disabled = false;
-  video.srcObject.getTracks().forEach(track => track.stop());
+  
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  
+  showToast('Foto berhasil diambil!', 'success');
 }
 
 async function submitAbsen() {
   const btn = document.getElementById('btnSubmit');
   const statusEl = document.getElementById('statusAbsen');
+  
   if (!absenFoto) {
-    statusEl.innerText = 'Ambil foto dulu!';
+    showToast('Ambil foto dulu!', 'error');
     return;
   }
+  
   btn.disabled = true;
   btn.innerText = 'Mengirim...';
   statusEl.innerText = '';
@@ -265,36 +498,37 @@ async function submitAbsen() {
     tipe: absenTipe
   });
 
-  showModal(res.msg);
   if (res.status === 'success') {
-    setTimeout(() => renderHome(), 1500);
+    showToast(`Absen ${absenTipe} berhasil!`, 'success');
+    setTimeout(() => renderHome(), 1000);
   } else {
     btn.disabled = false;
-    btn.innerText = 'Submit';
-    statusEl.innerText = res.msg;
+    btn.innerText = 'Submit Absen';
+    showToast(res.msg, 'error');
   }
 }
 
 function comingSoon() {
-  showModal('Fitur ini segera hadir!');
+  showToast('Fitur ini segera hadir!', 'success');
 }
 
 function renderBottomNav(active) {
   return `
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around text-xs py-2">
-    <button onclick="renderHome()" style="color:${active === 'home'? '#800000' : '#6b7280'}">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around text-xs py-2 shadow-lg">
+    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500'}">
       <i class="ri-home-5-fill text-xl"></i><p>Home</p>
     </button>
-    <button class="text-gray-500"><i class="ri-building-4-line text-xl"></i><p>Company</p></button>
-    <button class="text-gray-500"><i class="ri-information-line text-xl"></i><p>About</p></button>
-    <button onclick="renderAccount()" style="color:${active === 'account'? '#800000' : '#6b7280'}">
+    <button class="flex flex-col items-center gap-1 text-gray-500"><i class="ri-building-4-line text-xl"></i><p>Company</p></button>
+    <button class="flex flex-col items-center gap-1 text-gray-500"><i class="ri-information-line text-xl"></i><p>About</p></button>
+    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500'}">
       <i class="ri-user-3-line text-xl"></i><p>Account</p>
     </button>
   </div>`;
 }
 
 function renderAccount() {
-  // FOTO USER TETAP DARI DATABASE - BISA DIGANTI
+  if (liveClockInterval) clearInterval(liveClockInterval);
+  
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
   foto = foto.replace(/\s/g, '');
   if (foto.includes('uc?export=view&id=')) {
@@ -306,26 +540,28 @@ function renderAccount() {
   }
   
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
+  <div class="bg-white shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
-    <div class="bg-white rounded-lg shadow p-4 text-center mb-4">
-      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover" 
-           onerror="console.log('PREVIEW ERROR:', this.src); this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
+    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
+      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg" 
+           onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
       <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
-      <button onclick="document.getElementById('fotoInput').click()" class="text-sm font-bold" style="color:#800000">Ganti Foto</button>
+      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
+      <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
+      <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
     </div>
-    <div class="bg-white rounded-lg shadow p-4 space-y-3">
-      <div><label class="text-xs text-gray-500">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border p-2 rounded-lg bg-gray-100" disabled></div>
-      <div><label class="text-xs text-gray-500">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">Alamat</label><input id="Alamat" value="${currentUser.Alamat || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">No. Telpon</label><input id="No_Tlpn" value="${currentUser.No_Tlpn || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">Email</label><input id="Email" value="${currentUser.Email || ''}" class="w-full border p-2 rounded-lg"></div>
-      <div><label class="text-xs text-gray-500">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border p-2 rounded-lg"></div>
-      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-lg font-bold mt-2" style="background-color:#800000">Simpan Perubahan</button>
-      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg font-bold">Logout</button>
+    <div class="bg-white rounded-2xl shadow-lg p-4 space-y-3">
+      <div><label class="text-xs text-gray-500 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 bg-gray-100" disabled></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Lokasi</label><input id="Lokasi" value="${currentUser.Lokasi || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Perusahaan</label><input id="Perusahaan" value="${currentUser.Perusahaan || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Alamat</label><input id="Alamat" value="${currentUser.Alamat || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">No. Telpon</label><input id="No_Tlpn" value="${currentUser.No_Tlpn || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Email</label><input id="Email" value="${currentUser.Email || ''}" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 font-semibold">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border-2 border-gray-200 p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
+      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
   </div>
   ${renderBottomNav('account')}
@@ -357,28 +593,28 @@ async function saveAccount() {
   
   const res = await apiCall('update_user', { user: newUser });
   console.log('[SAVE] update_user response:', res);
-  showModal(res.msg);
   
   if (res.status === 'success') {
     currentUser = res.data;
     console.log('[SAVE] currentUser baru:', currentUser);
     sessionStorage.setItem('user', JSON.stringify(currentUser));
+    showToast('Profil berhasil diupdate!', 'success');
     setTimeout(() => {
       renderHome();
-    }, 1500);
+    }, 1000);
   } else {
     previewImg.style.opacity = '1';
+    showToast(res.msg, 'error');
   }
 }
 
 async function renderRekap() {
   app.innerHTML = `
-  <div class="bg-white shadow-sm p-4 flex items-center gap-3">
+  <div class="bg-white shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl"></i></button>
     <h1 class="text-xl font-bold">Riwayat Absensi</h1>
   </div>
   <div class="p-4 pb-24">
-    <!-- PILIH BULAN -->
     <div class="bg-white rounded-xl shadow p-4 mb-4">
       <label class="text-sm font-semibold text-gray-700 mb-2 block">Pilih Bulan</label>
       <select id="bulanRekap" onchange="loadRekapBulan()" class="w-full border-2 border-gray-200 p-3 rounded-lg font-semibold text-gray-800 focus:border-[#800000] focus:outline-none">
@@ -395,7 +631,6 @@ async function renderRekap() {
   ${renderBottomNav('home')}
   `;
   
-  // GENERATE LIST BULAN 12 BULAN TERAKHIR
   const bulanSelect = document.getElementById('bulanRekap');
   const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const now = new Date();
@@ -409,7 +644,6 @@ async function renderRekap() {
     bulanSelect.innerHTML += `<option value="${value}">${label}</option>`;
   }
   
-  // AUTO PILIH BULAN INI
   const bulanIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   bulanSelect.value = bulanIni;
   loadRekapBulan();
@@ -436,17 +670,15 @@ async function loadRekapBulan() {
   
   const res = await apiCall('get_rekap_user', { nama: currentUser.Nama });
   
-  if (res.status !== 'success') {
+  if (res.status!== 'success') {
     content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
     return;
   }
   
-  // FILTER DATA BERDASARKAN BULAN
   const [year, month] = bulan.split('-');
   const data = res.data.filter(r => {
     if (!r.Tanggal) return false;
-    // Format tanggal di Sheet: dd/mm/yyyy atau yyyy-mm-dd
-    const tgl = r.Tanggal.includes('/') ? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
+    const tgl = r.Tanggal.includes('/')? r.Tanggal.split('/').reverse().join('-') : r.Tanggal;
     return tgl.startsWith(`${year}-${month}`);
   }).reverse();
   
@@ -460,11 +692,9 @@ async function loadRekapBulan() {
     return;
   }
   
-  // HITUNG TOTAL
-  let totalHadir = data.filter(r => r['Jam Masuk'] && r['Jam Masuk'] !== '-').length;
+  let totalHadir = data.filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
   
   content.innerHTML = `
-    <!-- SUMMARY CARD -->
     <div class="bg-gradient-to-r from-[#800000] to-[#a00000] text-white rounded-xl p-4 mb-4 shadow-lg">
       <div class="flex justify-between items-center">
         <div>
@@ -478,7 +708,6 @@ async function loadRekapBulan() {
       </div>
     </div>
     
-    <!-- LIST DATA -->
     <div class="space-y-2">
       ${data.map((r, idx) => {
         const masuk = r['Jam Masuk'] || '-';
@@ -491,18 +720,17 @@ async function loadRekapBulan() {
              onclick="toggleDetail(${idx})">
           <div class="p-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-lg ${isAlpha ? 'bg-red-100' : 'bg-green-100'} flex items-center justify-center flex-shrink-0">
-                <i class="ri-${isAlpha ? 'close' : 'check'}-line text-2xl ${isAlpha ? 'text-red-600' : 'text-green-600'}"></i>
+              <div class="w-12 h-12 rounded-lg ${isAlpha? 'bg-red-100' : 'bg-green-100'} flex items-center justify-center flex-shrink-0">
+                <i class="ri-${isAlpha? 'close' : 'check'}-line text-2xl ${isAlpha? 'text-red-600' : 'text-green-600'}"></i>
               </div>
               <div>
                 <p class="font-bold text-gray-800">${formatTanggal(r.Tanggal)}</p>
-                <p class="text-xs text-gray-500">${isAlpha ? 'Tidak Hadir' : 'Hadir'}</p>
+                <p class="text-xs text-gray-500">${isAlpha? 'Tidak Hadir' : 'Hadir'}</p>
               </div>
             </div>
             <i id="arrow-${idx}" class="ri-arrow-down-s-line text-2xl text-gray-400 transition-transform"></i>
           </div>
           
-          <!-- DETAIL EXPAND -->
           <div id="detail-${idx}" class="hidden bg-gray-50 border-t border-gray-100 px-4 py-3">
             <div class="grid grid-cols-3 gap-3 text-center">
               <div>
@@ -539,7 +767,6 @@ function toggleDetail(idx) {
 
 function formatTanggal(tgl) {
   if (!tgl) return '-';
-  // Convert dd/mm/yyyy atau yyyy-mm-dd ke format bagus
   let d, m, y;
   if (tgl.includes('/')) {
     [d, m, y] = tgl.split('/');
