@@ -26,7 +26,6 @@ function toggleDarkMode() {
   isDarkMode =!isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
-  renderAccount();
 }
 
 function showToast(msg, type = 'success') {
