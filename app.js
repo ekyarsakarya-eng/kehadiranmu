@@ -348,6 +348,7 @@ function swipeCard(idx) {
   document.getElementById('dot-0').className = idx === 0? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
   document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
 }
+
 function startLiveClock() {
   if (liveClockInterval) clearInterval(liveClockInterval);
   function update() {
