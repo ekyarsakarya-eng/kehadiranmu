@@ -14,6 +14,7 @@ let startX = 0;
 let currentX = 0;
 let isDragging = false;
 
+// === HELPER ===
 function applyDarkMode() {
   if (isDarkMode) {
     document.documentElement.classList.add('dark');
@@ -23,10 +24,10 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // FIX: spasi
+  isDarkMode =!isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
-  renderAccount(); // biar update langsung
+  renderAccount();
 }
 
 function showToast(msg, type = 'success') {
@@ -45,9 +46,14 @@ function showToast(msg, type = 'success') {
   }, 2000);
 }
 
-async function apiCall(action, payload = {}) {
+async function apiCall(action, payload = {}, useCache = false) {
+  const cacheKey = `${action}_${JSON.stringify(payload)}`;
+  if (useCache) {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached);
+  }
+
   try {
-    console.log('API CALL:', action, payload);
     const res = await fetch(API_URL, {
       method: 'POST',
       redirect: 'follow',
@@ -56,7 +62,9 @@ async function apiCall(action, payload = {}) {
     });
     const text = await res.text();
     const result = JSON.parse(text);
-    console.log('API RESPONSE:', result);
+    if (useCache && result.status === 'success') {
+      sessionStorage.setItem(cacheKey, JSON.stringify(result));
+    }
     return result;
   } catch (e) {
     console.error('API ERROR:', e);
@@ -73,23 +81,6 @@ function getGreeting() {
   return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
 }
 
-function formatTanggal(tgl) {
-  if (!tgl) return '-';
-  let d, m, y;
-  if (tgl.includes('/')) {
-    [d, m, y] = tgl.split('/');
-  } else if (tgl.includes('-')) {
-    [y, m, d] = tgl.split('-');
-  } else {
-    return tgl;
-  }
-  const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const date = new Date(y, m - 1, d);
-  const hari = namaHari[date.getDay()];
-  return `${hari}, ${parseInt(d)} ${namaBulan[m - 1]} ${y}`;
-}
-
 function renderBottomNav(active) {
   return `
   <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
@@ -104,13 +95,14 @@ function renderBottomNav(active) {
   </div>`;
 }
 
+// === LOGIN ===
 async function renderLogin() {
   if (liveClockInterval) clearInterval(liveClockInterval);
   sessionStorage.clear();
   currentUser = null;
   applyDarkMode();
 
-  const res = await apiCall('get_setting');
+  const res = await apiCall('get_setting', {}, true);
   if (res.status === 'success') {
     appSetting = res.data;
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
@@ -120,7 +112,7 @@ async function renderLogin() {
   <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
     <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
       <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
-      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">ABSENSI KEHADIRAN TERPADU</h1>
+      <h1 class="font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">ABSENSI KEHADIRAN TERPADU</h1>
       <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
       <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
       <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
@@ -142,9 +134,23 @@ async function login() {
   if (res.status === 'success') {
     currentUser = res.data;
     appSetting = res.setting || {};
+
+    // Cache foto jadi base64 biar nggak load ulang
+    if (currentUser.URL_Logo) {
+      try {
+        const imgRes = await fetch(currentUser.URL_Logo);
+        const blob = await imgRes.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          currentUser.URL_Logo = reader.result;
+          sessionStorage.setItem('user', JSON.stringify(currentUser));
+        };
+        reader.readAsDataURL(blob);
+      } catch(e) {}
+    }
+
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
-    console.log('LOGIN SUCCESS, USER:', currentUser);
     showToast('Login berhasil!', 'success');
     setTimeout(() => renderHome(), 500);
   } else {
@@ -155,36 +161,30 @@ async function login() {
 
 function logout() {
   if (liveClockInterval) clearInterval(liveClockInterval);
-  sessionStorage.removeItem('user');
+  sessionStorage.clear();
   currentUser = null;
   renderLogin();
 }
 
+// === HOME ===
 function initSwipeGesture() {
   const wrapper = document.getElementById('swipeWrapper');
   if (!wrapper) return;
-
   wrapper.addEventListener('touchstart', (e) => {
     startX = e.touches[0].clientX;
     isDragging = true;
   }, { passive: true });
-
   wrapper.addEventListener('touchmove', (e) => {
     if (!isDragging) return;
     currentX = e.touches[0].clientX;
   }, { passive: true });
-
   wrapper.addEventListener('touchend', (e) => {
     if (!isDragging) return;
     isDragging = false;
     const diff = startX - currentX;
-
     if (Math.abs(diff) > 50) {
-      if (diff > 0 && currentCard === 0) {
-        swipeCard(1);
-      } else if (diff < 0 && currentCard === 1) {
-        swipeCard(0);
-      }
+      if (diff > 0 && currentCard === 0) swipeCard(1);
+      else if (diff < 0 && currentCard === 1) swipeCard(0);
     }
   }, { passive: true });
 }
@@ -231,23 +231,30 @@ function updateCountdown(sudahMasuk, sudahPulang) {
 }
 
 async function renderHome() {
-  console.log('RENDER HOME, USER:', currentUser);
+  // Render skeleton dulu biar cepet
+  app.innerHTML = `
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="animate-pulse space-y-4">
+      <div class="h-16 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+    </div>
+  </div>`;
 
-  const [dashboardRes, rekapRes] = await Promise.all([
-    apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
-    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
-  ]);
+  // Ambil dari cache dulu kalau ada
+  let dashboardRes = JSON.parse(sessionStorage.getItem('dashboard') || 'null');
+  let rekapRes = JSON.parse(sessionStorage.getItem('rekap') || 'null');
+
+  if (!dashboardRes ||!rekapRes) {
+    [dashboardRes, rekapRes] = await Promise.all([
+      apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
+      apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
+    ]);
+    sessionStorage.setItem('dashboard', JSON.stringify(dashboardRes));
+    sessionStorage.setItem('rekap', JSON.stringify(rekapRes));
+  }
 
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
-  fotoUser = fotoUser.replace(/\s/g, '');
-  if (fotoUser.includes('uc?export=view&id=')) {
-    const fileId = fotoUser.split('id=')[1].split('&')[0];
-    fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-  if (fotoUser.includes('drive.google.com')) {
-    fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
-
   const jamMasuk = dashboardRes.jamMasuk || '00:00';
   const jamPulang = dashboardRes.jamPulang || '00:00';
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
@@ -267,14 +274,10 @@ async function renderHome() {
     statusIcon = 'ri-checkbox-circle-line';
   }
 
-  let totalHadir = 0;
-  let totalIzin = 0;
-  let totalAlpa = 0;
-
+  let totalHadir = 0, totalIzin = 0, totalAlpa = 0;
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
-    console.log('STATISTIK DARI SERVER:', rekapRes.statistik);
   }
 
   const greeting = getGreeting();
@@ -284,10 +287,7 @@ async function renderHome() {
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap"
-           style="font-size: clamp(11px, 3.5vw, 16px);">
-           ABSENSI KEHADIRAN TERPADU
-        </p>
+        <p class="font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">ABSENSI KEHADIRAN TERPADU</p>
       </div>
     </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
@@ -302,7 +302,7 @@ async function renderHome() {
         <i class="${greeting.icon} text-2xl ${greeting.color}"></i>
         <p class="text-lg font-bold text-gray-800 dark:text-white">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
       </div>
-      <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
+      <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
 
@@ -314,7 +314,6 @@ async function renderHome() {
             <p class="text-xs opacity-90">Status Hari Ini</p>
             <p class="font-bold text-lg">${statusText}</p>
           </div>
-        </div>
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
       <div id="countdownPulang" class="text-xs mt-2 opacity-90"></div>
@@ -332,7 +331,6 @@ async function renderHome() {
                   <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
                 </div>
               </div>
-            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
@@ -343,9 +341,7 @@ async function renderHome() {
                 <p class="font-bold text-sm">Absen Pulang</p>
               </button>
             </div>
-            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">
-              Buka Kamera Absen
-            </button>
+            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
           </div>
         </div>
 
@@ -365,10 +361,7 @@ async function renderHome() {
                 <p class="text-3xl font-bold">${totalAlpa}</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
-            </div>
-            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">
-              Lihat Detail Rekap
-            </button>
+            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
           </div>
         </div>
       </div>
@@ -409,6 +402,7 @@ async function renderHome() {
   initSwipeGesture();
 }
 
+// === ABSEN ===
 async function quickAbsen(tipe) {
   showToast(`Membuka kamera untuk Absen ${tipe}...`, 'success');
   setTimeout(() => renderAbsen(), 300);
@@ -420,7 +414,6 @@ async function renderAbsen() {
     absenStream = null;
   }
 
-  let alamat = 'Mendeteksi lokasi...';
   let jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   let tanggal = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -430,8 +423,8 @@ async function renderAbsen() {
     <h1 class="text-xl font-bold text-gray-900 dark:text-white">Absen</h1>
   </div>
   <div class="p-4 pb-24 text-center bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <p id="alamatText" class="text-sm text-gray-600 dark:text-gray-400 mb-4">${alamat}</p>
-    <p class="text-5xl font-bold font-header text-gray-900 dark:text-white">${jam}</p>
+    <p id="alamatText" class="text-sm text-gray-600 dark:text-gray-400 mb-4">Mendeteksi lokasi...</p>
+    <p class="text-5xl font-bold text-gray-900 dark:text-white">${jam}</p>
     <p class="text-lg text-gray-700 dark:text-gray-300 mb-6">${tanggal}</p>
 
     <div class="relative w-64 h-64 mx-auto mb-6">
@@ -469,22 +462,24 @@ async function renderAbsen() {
   ${renderBottomNav('home')}
   `;
 
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    currentLokasi = { lat: latitude, lon: longitude };
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-     .then(res => res.json())
-     .then(data => {
-        currentLokasi.alamat = data.display_name || `${latitude}, ${longitude}`;
-        document.getElementById('alamatText').innerHTML = `<i class="ri-map-pin-line"></i> ${currentLokasi.alamat}`;
-      }).catch(() => {
-        currentLokasi.alamat = `${latitude}, ${longitude}`;
-        document.getElementById('alamatText').innerText = currentLokasi.alamat;
-      });
-  }, () => {
-    document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
-    showToast('GPS tidak aktif', 'error');
-  });
+  // GPS jalan belakangan biar nggak nge-block
+  setTimeout(() => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      currentLokasi = { lat: latitude, lon: longitude };
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+      .then(res => res.json())
+      .then(data => {
+          currentLokasi.alamat = data.display_name || `${latitude}, ${longitude}`;
+          document.getElementById('alamatText').innerHTML = `<i class="ri-map-pin-line"></i> ${currentLokasi.alamat}`;
+        }).catch(() => {
+          currentLokasi.alamat = `${latitude}, ${longitude}`;
+          document.getElementById('alamatText').innerText = currentLokasi.alamat;
+        });
+    }, () => {
+      document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
+    });
+  }, 100);
 
   startCamera();
 }
@@ -561,6 +556,8 @@ async function submitAbsen() {
   });
   if (res.status === 'success') {
     showToast(`Absen ${absenTipe} berhasil!`, 'success');
+    sessionStorage.removeItem('dashboard'); // hapus cache biar refresh
+    sessionStorage.removeItem('rekap');
     setTimeout(() => renderHome(), 1000);
   } else {
     btn.disabled = false;
@@ -569,98 +566,9 @@ async function submitAbsen() {
   }
 }
 
+// === REKAP ===
 function comingSoon() {
   showToast('Fitur ini segera hadir!', 'warning');
-}
-
-function renderAccount() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
-  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
-  foto = foto.replace(/\s/g, '');
-  if (foto.includes('uc?export=view&id=')) {
-    const fileId = foto.split('id=')[1].split('&')[0];
-    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-  if (foto.includes('drive.google.com')) {
-    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
-
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
-      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
-           onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
-      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
-      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
-      <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
-      <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 mb-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="ri-moon-clear-line text-2xl text-indigo-500"></i>
-          <div>
-            <p class="font-bold text-gray-900 dark:text-white">Dark Mode</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Mode gelap untuk mata</p>
-          </div>
-        </div>
-        <button onclick="toggleDarkMode()" class="relative w-14 h-8 rounded-full transition ${isDarkMode? 'bg-[#800000]' : 'bg-gray-300'}">
-          <div class="absolute top-1 ${isDarkMode? 'right-1' : 'left-1'} w-6 h-6 bg-white rounded-full transition shadow-md"></div>
-        </button>
-      </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 bg-gray-100 dark:bg-gray-900" disabled></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Unit Kerja</label><input id="Unit_Kerja" value="${currentUser.Unit_Kerja || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
-      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
-    </div>
-  ${renderBottomNav('account')}
-  `;
-  applyDarkMode();
-}
-
-function previewFoto(event) {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = e => document.getElementById('previewFoto').src = e.target.result;
-    reader.readAsDataURL(file);
-  }
-}
-
-async function saveAccount() {
-  const newUser = {...currentUser };
-  ['Nama', 'Jabatan', 'Unit_Kerja', 'Password'].forEach(f => {
-    const el = document.getElementById(f);
-    if (el && el.value) newUser[f] = el.value;
-  });
-
-  const fotoInput = document.getElementById('fotoInput');
-  const previewImg = document.getElementById('previewFoto');
-  if (fotoInput.files[0]) {
-    previewImg.style.opacity = '0.5';
-    newUser.Foto_Profil = previewImg.src;
-  }
-
-  const res = await apiCall('update_user', { user: newUser });
-  if (res.status === 'success') {
-    currentUser = res.data;
-    sessionStorage.setItem('user', JSON.stringify(currentUser));
-    showToast('Profil berhasil diupdate!', 'success');
-    setTimeout(() => {
-      renderHome();
-    }, 1000);
-  } else {
-    previewImg.style.opacity = '1';
-    showToast(res.msg, 'error');
-  }
 }
 
 async function renderRekap() {
@@ -682,12 +590,10 @@ async function renderRekap() {
         <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
       </div>
     </div>
-  </div>
   ${renderBottomNav('home')}
   `;
 
   applyDarkMode();
-
   const bulanSelect = document.getElementById('bulanRekap');
   const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const now = new Date();
@@ -725,14 +631,14 @@ async function loadRekapBulan() {
       <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
     </div>`;
 
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim() });
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim() }, true);
 
   if (res.status!== 'success') {
     content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
     return;
   }
 
-  // FIX: destructuring yang bener
+  // FIX: destructuring bener
   const [year, month] = bulan.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -858,6 +764,7 @@ function showDetailTanggal(day, status, idx) {
         <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
         <p class="text-xs ${warnaStatus} font-semibold">${status === 'hadir'? 'Hadir Tepat Waktu' : 'Terlambat'}</p>
       </div>
+    </div>
     <div class="grid grid-cols-3 gap-3 text-center mb-3">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
@@ -893,7 +800,96 @@ function showDetailTanggal(day, status, idx) {
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
-// --- INIT PALING AKHIR ---
+// === ACCOUNT ===
+function renderAccount() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
+  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  foto = foto.replace(/\s/g, '');
+  if (foto.includes('uc?export=view&id=')) {
+    const fileId = foto.split('id=')[1].split('&')[0];
+    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
+
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
+      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
+           onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
+      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
+      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
+      <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
+      <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 mb-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="ri-moon-clear-line text-2xl text-indigo-500"></i>
+          <div>
+            <p class="font-bold text-gray-900 dark:text-white">Dark Mode</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Mode gelap untuk mata</p>
+          </div>
+        </div>
+        <button onclick="toggleDarkMode()" class="relative w-14 h-8 rounded-full transition ${isDarkMode? 'bg-[#800000]' : 'bg-gray-300'}">
+          <div class="absolute top-1 ${isDarkMode? 'right-1' : 'left-1'} w-6 h-6 bg-white rounded-full transition shadow-md"></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 bg-gray-100 dark:bg-gray-900" disabled></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Unit Kerja</label><input id="Unit_Kerja" value="${currentUser.Unit_Kerja || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
+      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
+    </div>
+  </div>
+  ${renderBottomNav('account')}
+  `;
+  applyDarkMode();
+}
+
+function previewFoto(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => document.getElementById('previewFoto').src = e.target.result;
+    reader.readAsDataURL(file);
+  }
+}
+
+async function saveAccount() {
+  const newUser = {...currentUser };
+  ['Nama', 'Jabatan', 'Unit_Kerja', 'Password'].forEach(f => {
+    const el = document.getElementById(f);
+    if (el && el.value) newUser[f] = el.value;
+  });
+
+  const fotoInput = document.getElementById('fotoInput');
+  const previewImg = document.getElementById('previewFoto');
+  if (fotoInput.files[0]) {
+    previewImg.style.opacity = '0.5';
+    newUser.Foto_Profil = previewImg.src;
+  }
+
+  const res = await apiCall('update_user', { user: newUser });
+  if (res.status === 'success') {
+    currentUser = res.data;
+    sessionStorage.setItem('user', JSON.stringify(currentUser));
+    showToast('Profil berhasil diupdate!', 'success');
+    setTimeout(() => {
+      renderHome();
+    }, 1000);
+  } else {
+    previewImg.style.opacity = '1';
+    showToast(res.msg, 'error');
+  }
+}
+
+// === INIT PALING AKHIR ===
 (function init() {
   applyDarkMode();
   currentUser? renderHome() : renderLogin();
