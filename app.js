@@ -23,9 +23,10 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode;
+  isDarkMode =!isDarkMode; // FIX: spasi
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
+  renderAccount(); // biar update langsung
 }
 
 function showToast(msg, type = 'success') {
@@ -177,7 +178,7 @@ function initSwipeGesture() {
     if (!isDragging) return;
     isDragging = false;
     const diff = startX - currentX;
-    
+
     if (Math.abs(diff) > 50) {
       if (diff > 0 && currentCard === 0) {
         swipeCard(1);
@@ -231,7 +232,7 @@ function updateCountdown(sudahMasuk, sudahPulang) {
 
 async function renderHome() {
   console.log('RENDER HOME, USER:', currentUser);
-  
+
   const [dashboardRes, rekapRes] = await Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
     apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
@@ -269,7 +270,7 @@ async function renderHome() {
   let totalHadir = 0;
   let totalIzin = 0;
   let totalAlpa = 0;
-  
+
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
@@ -399,7 +400,6 @@ async function renderHome() {
         `).join('')}
       </div>
     </div>
-  </div>
   ${renderBottomNav('home')}
   `;
 
@@ -473,8 +473,8 @@ async function renderAbsen() {
     const { latitude, longitude } = pos.coords;
     currentLokasi = { lat: latitude, lon: longitude };
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-.then(res => res.json())
-.then(data => {
+     .then(res => res.json())
+     .then(data => {
         currentLokasi.alamat = data.display_name || `${latitude}, ${longitude}`;
         document.getElementById('alamatText').innerHTML = `<i class="ri-map-pin-line"></i> ${currentLokasi.alamat}`;
       }).catch(() => {
@@ -587,7 +587,6 @@ function renderAccount() {
 
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
-    <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
       <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
@@ -622,7 +621,6 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
-  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
@@ -734,20 +732,19 @@ async function loadRekapBulan() {
     return;
   }
 
-  const [year][month] = bulan.split('-').map(Number);
+  // FIX: destructuring yang bener
+  const [year, month] = bulan.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
   const dataMap = {};
-  
-  // Simpan index biar gampang diakses
+
   res.data.forEach((r, idx) => {
     if (r.TanggalRaw && r.TanggalRaw.startsWith(`${year}-${String(month).padStart(2,'0')}`)) {
       const day = parseInt(r.TanggalRaw.split('-')[2]);
-      dataMap[day] = {...r, _idx: idx }; // simpan index asli
+      dataMap[day] = {...r, _idx: idx };
     }
   });
 
-  // Simpan data global biar bisa diakses showDetailTanggal
   window.rekapDataBulanIni = Object.values(dataMap);
 
   const totalHadir = Object.values(dataMap).filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
@@ -784,7 +781,7 @@ async function loadRekapBulan() {
     let text = 'text-gray-400';
     let status = 'alpa';
     let idx = -1;
-    
+
     if(r){
       idx = r._idx;
       if(r['Jam Masuk'] && r['Jam Masuk']!== '-'){
@@ -801,18 +798,18 @@ async function loadRekapBulan() {
         text = 'text-white';
       }
     }
-    
+
     const today = new Date();
     const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
     const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
-    
+
     html += `
-      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})" 
+      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})"
               class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
         ${day}
       </button>`;
   }
-  
+
   html += `
       </div>
       <div class="flex justify-center gap-4 mt-4 text-xs">
@@ -826,14 +823,14 @@ async function loadRekapBulan() {
       <p class="text-center text-gray-400 text-sm">Klik tanggal untuk lihat detail</p>
     </div>
   `;
-  
+
   content.innerHTML = html;
 }
 
 function showDetailTanggal(day, status, idx) {
   const el = document.getElementById('detailTanggal');
   const r = idx >= 0? window.rekapDataBulanIni.find(d => d._idx === idx) : null;
-  
+
   if (!r || status === 'alpa') {
     el.innerHTML = `
       <div class="text-center py-4">
@@ -844,7 +841,7 @@ function showDetailTanggal(day, status, idx) {
     el.classList.remove('hidden');
     return;
   }
-  
+
   const masuk = r['Jam Masuk'] || '-';
   const pulang = r['Jam Pulang'] || '-';
   const durasi = r.Durasi || '-';
@@ -853,7 +850,7 @@ function showDetailTanggal(day, status, idx) {
   const lon = r.Longitude || '';
   const warnaStatus = status === 'hadir'? 'text-green-600' : 'text-orange-600';
   const iconStatus = status === 'hadir'? 'ri-checkbox-circle-line' : 'ri-time-line';
-  
+
   el.innerHTML = `
     <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
       <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
@@ -861,7 +858,6 @@ function showDetailTanggal(day, status, idx) {
         <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
         <p class="text-xs ${warnaStatus} font-semibold">${status === 'hadir'? 'Hadir Tepat Waktu' : 'Terlambat'}</p>
       </div>
-    </div>
     <div class="grid grid-cols-3 gap-3 text-center mb-3">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
@@ -875,7 +871,6 @@ function showDetailTanggal(day, status, idx) {
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
         <p class="font-bold text-sm text-[#800000]">${durasi}</p>
       </div>
-    </div>
     ${lokasi!== '-'? `
     <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
       <div class="flex items-start gap-2">
