@@ -32,7 +32,6 @@ async function apiCall(action, payload = {}) {
 }
 
 async function renderLogin() {
-  // HAPUS CACHE TOTAL PAS LOGIN
   sessionStorage.clear();
   currentUser = null;
   
@@ -115,7 +114,6 @@ async function renderHome() {
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${logoPT}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="console.log('LOGO ERROR'); this.src='${foto}'">
       <div class="min-w-0 flex-1 overflow-hidden">
-        <!-- HEADER AUTO RESIZE -->
         <p class="font-header font-extrabold text-gray-900 tracking-tight whitespace-nowrap" 
            style="font-size: clamp(11px, 3.5vw, 16px);">
            ABSENSI KEHADIRAN TERPADU
@@ -202,8 +200,8 @@ async function renderAbsen() {
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-     .then(res => res.json())
-     .then(data => {
+    .then(res => res.json())
+    .then(data => {
         document.getElementById('alamatText').innerText = data.display_name || `${latitude}, ${longitude}`;
       }).catch(() => {
         document.getElementById('alamatText').innerText = `${latitude}, ${longitude}`;
@@ -297,6 +295,11 @@ function renderBottomNav(active) {
 
 function renderAccount() {
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  foto = foto.replace(/\s/g, '');
+  if (foto.includes('uc?export=view&id=')) {
+    const fileId = foto.split('id=')[1].split('&')[0];
+    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
   if (foto.includes('drive.google.com')) {
     foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
