@@ -3,7 +3,7 @@ const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
 
-// FUNGSI MODAL GANTIN ALERT
+// MODAL POPUP GANTIN ALERT
 function showModal(text) {
   document.getElementById('modal-text').innerText = text;
   document.getElementById('modal-popup').classList.remove('hidden');
@@ -85,7 +85,13 @@ function logout() {
 
 async function renderHome() {
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama });
-  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
+  
+  // FIX CACHE FOTO: Tambah timestamp kalo dari Drive
+  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
+  if (foto.includes('drive.google.com')) {
+    foto += (foto.includes('?')? '&' : '?') + 't=' + new Date().getTime();
+  }
+  
   const logoPT = appSetting.Logo_Login || foto;
   const namaPT = appSetting.Nama_Perusahaan || currentUser.Perusahaan || 'Nama Perusahaan';
   
@@ -243,7 +249,7 @@ async function submitAbsen() {
 
   showModal(res.msg); // GANTI alert() JADI INI
   if (res.status === 'success') {
-    setTimeout(() => renderHome(), 1500); // Delay biar sempet baca popup
+    setTimeout(() => renderHome(), 1500);
   } else {
     btn.disabled = false;
     btn.innerText = 'Submit';
@@ -270,7 +276,12 @@ function renderBottomNav(active) {
 }
 
 function renderAccount() {
-  const foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  // FIX CACHE FOTO ACCOUNT
+  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  if (foto.includes('drive.google.com')) {
+    foto += (foto.includes('?')? '&' : '?') + 't=' + new Date().getTime();
+  }
+  
   app.innerHTML = `
   <div class="bg-white shadow-sm p-4 text-center"><h1 class="text-xl font-bold">Account</h1></div>
   <div class="p-4 pb-24">
@@ -312,16 +323,26 @@ async function saveAccount() {
     const el = document.getElementById(f);
     if (el && el.value) newUser[f] = el.value;
   });
+  
   const fotoInput = document.getElementById('fotoInput');
+  const previewImg = document.getElementById('previewFoto');
   if (fotoInput.files[0]) {
-    newUser.Foto_Profil = document.getElementById('previewFoto').src;
+    previewImg.style.opacity = '0.5';
+    newUser.Foto_Profil = previewImg.src;
   }
+  
   const res = await apiCall('update_user', { user: newUser });
   showModal(res.msg); // GANTI alert() JADI INI
+  
   if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
-    renderHome();
+    // Kasih delay 1 detik biar Drive sempet upload
+    setTimeout(() => {
+      renderHome();
+    }, 1000);
+  } else {
+    previewImg.style.opacity = '1';
   }
 }
 
