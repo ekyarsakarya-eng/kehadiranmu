@@ -155,11 +155,11 @@ async function renderHome() {
   const jamPulang = res.jamPulang || '00:00';
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
   const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-  
+
   let statusText = 'Belum Absen Masuk';
   let statusColor = 'bg-red-500';
   let statusIcon = 'ri-close-circle-line';
-  
+
   if (sudahPulang) {
     statusText = `Sudah Pulang ${jamPulang}`;
     statusColor = 'bg-blue-500';
@@ -183,13 +183,13 @@ async function renderHome() {
   }
 
   const greeting = getGreeting();
-  
+
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" 
+        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap"
            style="font-size: clamp(11px, 3.5vw, 16px);">
            ABSENSI KEHADIRAN TERPADU
         </p>
@@ -200,7 +200,7 @@ async function renderHome() {
       <i class="ri-menu-line"></i>
     </div>
   </div>
-  
+
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="mb-4">
       <div class="flex items-center gap-2 mb-1">
@@ -225,8 +225,8 @@ async function renderHome() {
       <div id="countdownPulang" class="text-xs mt-2 opacity-90"></div>
     </div>
 
-    <div class="relative overflow-hidden rounded-2xl">
-      <div id="swipeContainer" class="flex transition-transform duration-300" style="transform: translateX(0%);">
+    <div class="relative overflow-hidden rounded-2xl" id="swipeWrapper">
+      <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
           <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl">
             <div class="flex items-center justify-between mb-4">
@@ -277,11 +277,14 @@ async function renderHome() {
           </div>
         </div>
       </div>
-      
+
       <div class="flex justify-center gap-2 mt-3">
         <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
         <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
       </div>
+      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
+        <i class="ri-drag-move-line"></i> Geser untuk lihat statistik
+      </p>
     </div>
 
     <div class="grid grid-cols-4 gap-4 text-center mt-6 text-xs">
@@ -290,19 +293,61 @@ async function renderHome() {
       <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-time-line text-3xl text-gray-700 dark:text-gray-400"></i>Lembur</button>
       <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-calendar-todo-line text-3xl text-purple-600"></i>Shift</button>
       <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-walk-line text-3xl text-red-600"></i>Patroli</button>
-      <button onclick="renderAccount()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-user-3-line text-3xl text-indigo-600"></i>Account</button>
+      <div></div>
       <button onclick="comingSoon()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-information-line text-3xl text-gray-500"></i>Info</button>
       <button onclick="logout()" class="flex flex-col items-center gap-1 active:scale-90 transition text-gray-700 dark:text-gray-300"><i class="ri-logout-box-r-line text-3xl text-black dark:text-white"></i>Keluar</button>
     </div>
   </div>
   ${renderBottomNav('home')}
   `;
-  
+
   applyDarkMode();
   startLiveClock();
   updateCountdown(sudahMasuk, sudahPulang);
+  initSwipeGesture();
 }
 
+let currentCard = 0;
+let startX = 0;
+let currentX = 0;
+let isDragging = false;
+
+function initSwipeGesture() {
+  const wrapper = document.getElementById('swipeWrapper');
+  if (!wrapper) return;
+
+  wrapper.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+  }, { passive: true });
+
+  wrapper.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    const diff = startX - currentX;
+    
+    if (Math.abs(diff) > 50) { // Threshold 50px
+      if (diff > 0 && currentCard === 0) {
+        swipeCard(1); // Geser kiri
+      } else if (diff < 0 && currentCard === 1) {
+        swipeCard(0); // Geser kanan
+      }
+    }
+  }, { passive: true });
+}
+
+function swipeCard(idx) {
+  currentCard = idx;
+  const container = document.getElementById('swipeContainer');
+  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
+  document.getElementById('dot-0').className = idx === 0? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
+  document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
+}
 function startLiveClock() {
   if (liveClockInterval) clearInterval(liveClockInterval);
   function update() {
