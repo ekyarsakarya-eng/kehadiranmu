@@ -2,9 +2,24 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Absensi Kehadiran Terpadu</title>
-  <link href="output.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            'header': ['Poppins', 'sans-serif'],
+          },
+          colors: {
+            'primary': '#800000',
+          }
+        }
+      }
+    }
+  </script>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -13,13 +28,7 @@
   </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
-  <div id="app">
-    <div class="flex items-center justify-center h-screen">
-      <div class="text-center">
-        <i class="ri-loader-4-line animate-spin text-4xl text-[#800000]"></i>
-        <p class="text-sm text-gray-500 mt-2">Memuat...</p>
-      </div>
-    </div>
+  <div id="app"></div>
   <script src="app.js"></script>
 </body>
 </html>
