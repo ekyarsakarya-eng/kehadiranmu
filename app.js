@@ -735,17 +735,21 @@ async function loadRekapBulan() {
     return;
   }
 
-  const [year, month] = bulan.split('-').map(Number);
+  const [year][month] = bulan.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
   const dataMap = {};
   
-  res.data.forEach(r => {
+  // Simpan index biar gampang diakses
+  res.data.forEach((r, idx) => {
     if (r.TanggalRaw && r.TanggalRaw.startsWith(`${year}-${String(month).padStart(2,'0')}`)) {
       const day = parseInt(r.TanggalRaw.split('-')[2]);
-      dataMap[day] = r;
+      dataMap[day] = {...r, _idx: idx }; // simpan index asli
     }
   });
+
+  // Simpan data global biar bisa diakses showDetailTanggal
+  window.rekapDataBulanIni = Object.values(dataMap);
 
   const totalHadir = Object.values(dataMap).filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
   const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -780,8 +784,10 @@ async function loadRekapBulan() {
     let bg = 'bg-gray-100 dark:bg-gray-700';
     let text = 'text-gray-400';
     let status = 'alpa';
+    let idx = -1;
     
     if(r){
+      idx = r._idx;
       if(r['Jam Masuk'] && r['Jam Masuk']!== '-'){
         if(r.Status === 'Terlambat'){
           bg = 'bg-orange-500';
@@ -802,7 +808,7 @@ async function loadRekapBulan() {
     const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
     
     html += `
-      <button onclick='showDetailTanggal(${day}, "${status}", ${JSON.stringify(r).replace(/"/g, '&quot;')})' 
+      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})" 
               class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
         ${day}
       </button>`;
@@ -825,8 +831,10 @@ async function loadRekapBulan() {
   content.innerHTML = html;
 }
 
-function showDetailTanggal(day, status, r) {
+function showDetailTanggal(day, status, idx) {
   const el = document.getElementById('detailTanggal');
+  const r = idx >= 0? window.rekapDataBulanIni.find(d => d._idx === idx) : null;
+  
   if (!r || status === 'alpa') {
     el.innerHTML = `
       <div class="text-center py-4">
