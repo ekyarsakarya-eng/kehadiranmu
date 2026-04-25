@@ -3,6 +3,16 @@ const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
 
+// FUNGSI MODAL GANTIN ALERT
+function showModal(text) {
+  document.getElementById('modal-text').innerText = text;
+  document.getElementById('modal-popup').classList.remove('hidden');
+  document.getElementById('modal-popup').classList.add('flex');
+}
+function closeModal() {
+  document.getElementById('modal-popup').classList.add('hidden');
+}
+
 async function apiCall(action, payload = {}) {
   console.log('[USER API] Call:', action, payload);
   try {
@@ -23,7 +33,6 @@ async function apiCall(action, payload = {}) {
 }
 
 async function renderLogin() {
-  // Paksa ambil setting terbaru dari server, jangan pake cache
   const res = await apiCall('get_setting');
   if (res.status === 'success') {
     appSetting = res.data;
@@ -51,7 +60,7 @@ async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   const errEl = document.getElementById('err');
-  if (!username || !password) {
+  if (!username ||!password) {
     errEl.innerText = 'Username & Password wajib diisi';
     return;
   }
@@ -164,12 +173,11 @@ async function renderAbsen() {
   ${renderBottomNav('home')}
   `;
 
-  // Ambil lokasi
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-      .then(res => res.json())
-      .then(data => {
+     .then(res => res.json())
+     .then(data => {
         document.getElementById('alamatText').innerText = data.display_name || `${latitude}, ${longitude}`;
       }).catch(() => {
         document.getElementById('alamatText').innerText = `${latitude}, ${longitude}`;
@@ -178,7 +186,6 @@ async function renderAbsen() {
     document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
   });
 
-  // Nyalain kamera
   startCamera();
 }
 
@@ -212,7 +219,6 @@ function ambilFoto() {
   video.classList.add('hidden');
   document.getElementById('iconKamera').classList.add('hidden');
   document.getElementById('btnSubmit').disabled = false;
-  // Matikan kamera setelah foto
   video.srcObject.getTracks().forEach(track => track.stop());
 }
 
@@ -235,9 +241,9 @@ async function submitAbsen() {
     tipe: absenTipe
   });
 
-  alert(res.msg);
+  showModal(res.msg); // GANTI alert() JADI INI
   if (res.status === 'success') {
-    renderHome();
+    setTimeout(() => renderHome(), 1500); // Delay biar sempet baca popup
   } else {
     btn.disabled = false;
     btn.innerText = 'Submit';
@@ -246,7 +252,7 @@ async function submitAbsen() {
 }
 
 function comingSoon() {
-  alert('Fitur ini segera hadir!');
+  showModal('Fitur ini segera hadir!'); // GANTI alert() JADI INI
 }
 
 function renderBottomNav(active) {
@@ -311,7 +317,7 @@ async function saveAccount() {
     newUser.Foto_Profil = document.getElementById('previewFoto').src;
   }
   const res = await apiCall('update_user', { user: newUser });
-  alert(res.msg);
+  showModal(res.msg); // GANTI alert() JADI INI
   if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
@@ -337,7 +343,7 @@ async function renderRekap() {
     return;
   }
   
-  const data = res.data.reverse(); // Terbaru di atas
+  const data = res.data.reverse();
   if (data.length === 0) {
     content.innerHTML = `<p class="text-gray-500 text-center">Belum ada data absensi</p>`;
     return;
