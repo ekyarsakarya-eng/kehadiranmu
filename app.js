@@ -1039,9 +1039,72 @@ async function submitKejadian() {
   }
 }
 
-// --- INIT ---
+function showSplashScreen() {
+  app.innerHTML = `
+  <div class="fixed inset-0 bg-gradient-to-br from-[#800000] to-[#a00000] z-[500] flex items-center justify-center">
+    <div class="relative w-64 h-64">
+      <svg viewBox="0 0 200 200" class="w-full h-full">
+        <style>
+        .satpam { animation: lari 1.2s ease-in-out, hormat 0.8s ease-in-out 1.2s forwards; }
+        .kaki1 { animation: langkah 0.25s infinite; transform-origin: 95px 140px; }
+        .kaki2 { animation: langkah 0.25s infinite 0.125s; transform-origin: 105px 140px; }
+        .tangan { animation: hormat-tangan 0.8s ease-in-out 1.2s forwards; transform-origin: 110px 100px; }
+        .bg-gerak { animation: bg-slide 1.2s linear; }
+          @keyframes lari { 0% { transform: translateX(-150px); } 100% { transform: translateX(0); } }
+          @keyframes langkah { 0%,100% { transform: rotate(-25deg); } 50% { transform: rotate(25deg); } }
+          @keyframes hormat { 0% { transform: translateX(0); } 100% { transform: translateX(0) scale(1.15); } }
+          @keyframes hormat-tangan { 0% { transform: rotate(0); } 100% { transform: rotate(-140deg); } }
+          @keyframes bg-slide { 0% { transform: translateX(50px); } 100% { transform: translateX(0); } }
+        </style>
+        <!-- Garis jalan -->
+        <rect x="0" y="150" width="200" height="4" fill="white" opacity="0.3" class="bg-gerak"/>
+        <rect x="0" y="160" width="200" height="2" fill="white" opacity="0.2" class="bg-gerak"/>
+        <g class="satpam">
+          <!-- Topi -->
+          <rect x="85" y="40" width="30" height="8" rx="4" fill="#fff"/>
+          <rect x="90" y="35" width="20" height="10" fill="#fbbf24"/>
+          <text x="100" y="43" font-size="6" text-anchor="middle" fill="#800000">SATPAM</text>
+          <!-- Kepala -->
+          <circle cx="100" cy="60" r="15" fill="#ffdbac"/>
+          <!-- Badan -->
+          <rect x="88" y="75" width="24" height="35" rx="5" fill="#1e40af"/>
+          <!-- Dasi -->
+          <polygon points="100,80 95,95 105,95" fill="#800000"/>
+          <!-- Tangan kiri -->
+          <rect x="75" y="85" width="13" height="25" rx="6" fill="#ffdbac"/>
+          <!-- Tangan kanan -->
+          <rect x="112" y="85" width="13" height="25" rx="6" fill="#ffdbac" class="tangan"/>
+          <!-- Kaki -->
+          <rect x="90" y="110" width="10" height="30" rx="5" fill="#1e3a8a" class="kaki1"/>
+          <rect x="100" y="110" width="10" height="30" rx="5" fill="#1e3a8a" class="kaki2"/>
+          <!-- Sepatu -->
+          <ellipse cx="95" cy="142" rx="8" ry="4" fill="#000"/>
+          <ellipse cx="105" cy="142" rx="8" ry="4" fill="#000"/>
+          <!-- Logo dada -->
+          <circle cx="100" cy="90" r="4" fill="#fbbf24"/>
+          <text x="100" y="92" font-size="4" text-anchor="middle" fill="#800000">★</text>
+        </g>
+      </svg>
+      <p class="text-white font-header font-extrabold text-center mt-4 text-xl animate-pulse">SIAP MELAYANI!</p>
+    </div>
+  </div>
+  `;
+  
+  setTimeout(() => {
+    const splash = document.getElementById('app').firstElementChild;
+    splash.style.opacity = '0';
+    splash.style.transition = 'opacity 0.5s';
+    setTimeout(() => renderLogin(), 500);
+  }, 2200);
+}
+
+// Ganti init() jadi ini
 (function init() {
   applyDarkMode();
-  currentUser? renderHome() : renderLogin();
+  if (currentUser) {
+    renderHome();
+  } else {
+    showSplashScreen();
+  }
 })();
 // --- AKHIR BAGIAN 4 ---
