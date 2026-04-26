@@ -23,7 +23,7 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode;
+  isDarkMode = !isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderAccount();
