@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzvggk-r3j4Njzhjkf8_G3EtIsdzjp3vbNtCIbVI3kerscbyRUBbl1OLOX04tQsRxQ9/exec';
 const LOGO_APP = 'logo.png';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -16,6 +16,7 @@ let isDragging = false;
 let globalJamPulang = '-';
 let patroliFoto = null;
 let kejadianFoto = null;
+let urgensiKejadian = 'Sedang';
 
 function stopAllStreams() {
   if (absenStream) {
@@ -153,7 +154,7 @@ function showShiftPopup(status) {
   popup.id = 'shiftPopup';
   popup.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4';
   popup.innerHTML = `
-        <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
       <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white text-center">
         <div class="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
           <i class="ri-time-line text-4xl"></i>
@@ -170,9 +171,10 @@ function showShiftPopup(status) {
         </div>
         <button onclick="closeShiftPopup()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold active:scale-95 transition">Oke, Mengerti</button>
       </div>
+    </div>
     <style>
       @keyframes bounce-in { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-   .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
+    .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
     </style>
   `;
   document.body.appendChild(popup);
@@ -401,7 +403,6 @@ async function renderHome() {
             <p class="text-xs opacity-90">Status Hari Ini</p>
             <p class="font-bold text-lg">${statusText}</p>
           </div>
-        </div>
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
       ${infoShift}
@@ -417,6 +418,7 @@ async function renderHome() {
                 <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
                 <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
               </div>
+            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
@@ -429,7 +431,6 @@ async function renderHome() {
             </div>
             <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
           </div>
-        </div>
         <div class="w-full flex-shrink-0">
           <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow-xl">
             <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
@@ -482,6 +483,8 @@ async function renderHome() {
   updateCountdown(sudahMasuk, sudahPulang);
   initSwipeGesture();
 }
+// --- LANJUT KE BAGIAN 2: PATROLI + KEJADIAN ---
+// --- LANJUTAN DARI renderHome ---
 
 async function quickAbsen(tipe) {
   if (tipe === 'IN') {
@@ -542,8 +545,8 @@ async function renderAbsen() {
     const { latitude, longitude } = pos.coords;
     currentLokasi = { lat: latitude, lon: longitude };
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
- .then(res => res.json())
- .then(data => {
+.then(res => res.json())
+.then(data => {
         currentLokasi.alamat = data.display_name || `${latitude}, ${longitude}`;
         document.getElementById('alamatText').innerHTML = `<i class="ri-map-pin-line"></i> ${currentLokasi.alamat}`;
       }).catch(() => {
@@ -678,6 +681,7 @@ function renderAccount() {
           <div class="absolute top-1 ${isDarkMode? 'right-1' : 'left-1'} w-6 h-6 bg-white rounded-full transition shadow-md"></div>
         </button>
       </div>
+    </div>
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
       <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
       <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 bg-gray-100 dark:bg-gray-900" disabled></div>
@@ -687,6 +691,7 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
+  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
@@ -714,7 +719,7 @@ async function saveAccount() {
     newUser.Foto_Profil = previewImg.src;
   }
   const res = await apiCall('update_user', { user: newUser });
-    if (res.status === 'success') {
+  if (res.status === 'success') {
     currentUser = res.data;
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     showToast('Profil berhasil diupdate!', 'success');
@@ -1008,7 +1013,7 @@ async function renderPatroli() {
       <div class="relative w-full h-48 mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
         <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
         <img id="previewPatroli" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
           <i class="ri-camera-line text-4xl"></i>
           <p class="text-sm font-semibold">Tap untuk buka kamera</p>
         </button>
@@ -1033,7 +1038,6 @@ async function renderPatroli() {
   `;
   applyDarkMode();
 
-  // Load daftar pos
   const resPos = await apiCall('get_pos_patroli');
   const selectPos = document.getElementById('selectPos');
   if (resPos.status === 'success' && resPos.data.length > 0) {
@@ -1045,7 +1049,6 @@ async function renderPatroli() {
     selectPos.innerHTML = '<option value="">Tidak ada pos aktif</option>';
   }
 
-  // Deteksi lokasi
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
@@ -1172,7 +1175,7 @@ async function renderLaporKejadian() {
       <div>
         <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tingkat Urgensi</label>
         <div class="grid grid-cols-3 gap-2">
-          <button onclick="setUrgensi('Rendah')" id="urgensiRendah" class="p-3 rounded-lg border-2 border-green-500 text-green-600 font-bold active:scale-95 transition">Rendah</button>
+          <button onclick="setUrgensi('Rendah')" id="urgensiRendah" class="p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition">Rendah</button>
           <button onclick="setUrgensi('Sedang')" id="urgensiSedang" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Sedang</button>
           <button onclick="setUrgensi('Tinggi')" id="urgensiTinggi" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Tinggi</button>
         </div>
@@ -1188,7 +1191,7 @@ async function renderLaporKejadian() {
         <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
           <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
           <img id="previewKejadian" class="w-full h-full object-cover hidden" />
-          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
             <i class="ri-camera-line text-4xl"></i>
             <p class="text-sm font-semibold">Tap untuk buka kamera</p>
           </button>
@@ -1196,20 +1199,18 @@ async function renderLaporKejadian() {
             <i class="ri-camera-fill"></i> Ambil Foto
           </button>
         </div>
-      </div>
+            </div>
 
       <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
         <i class="ri-send-plane-fill"></i> Kirim Laporan
       </button>
     </div>
-  </div>
   ${renderBottomNav('patroli')}
   `;
   applyDarkMode();
-  window.urgensiKejadian = 'Sedang';
+  window.urgensiKejadian = 'Rendah'; // default
 }
 
-let urgensiKejadian = 'Sedang';
 function setUrgensi(level) {
   urgensiKejadian = level;
   document.getElementById('urgensiRendah').className = level === 'Rendah'?
