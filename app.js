@@ -13,6 +13,18 @@ let currentCard = 0;
 let startX = 0;
 let currentX = 0;
 let isDragging = false;
+let globalJamPulang = '-'; // FIX: simpen jamPulang global
+
+function stopAllStreams() {
+  if (absenStream) {
+    absenStream.getTracks().forEach(t => t.stop());
+    absenStream = null;
+  }
+  if (liveClockInterval) {
+    clearInterval(liveClockInterval);
+    liveClockInterval = null;
+  }
+}
 
 function applyDarkMode() {
   if (isDarkMode) {
@@ -23,7 +35,7 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode = !isDarkMode;
+  isDarkMode =!isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderAccount();
@@ -73,7 +85,7 @@ function getGreeting() {
   return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
 }
 
-function formatTanggal(tgl) {
+function formatTanggalIndo(tgl) {
   if (!tgl) return '-';
   let d, m, y;
   if (tgl.includes('/')) {
@@ -124,7 +136,8 @@ function cekStatusShift(dashboardRes) {
     bisaMasuk: false,
     sisaMs: selisihMs,
     info: `Shift berikutnya: ${jamBuka}`,
-    countdown: `${sisaJam}j ${sisaMenit}m ${sisaDetik}d`
+    countdown: `${sisaJam}j ${sisaMenit}m ${sisaDetik}d`,
+    jamPulang: jamPulang
   };
 }
 
@@ -154,12 +167,12 @@ function showShiftPopup(status) {
     </div>
     <style>
       @keyframes bounce-in { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-     .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
+    .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
     </style>
   `;
   document.body.appendChild(popup);
   const interval = setInterval(() => {
-    const newStatus = cekStatusShift({ jamPulang: document.getElementById('jamPulangData')?.value });
+    const newStatus = cekStatusShift({ jamPulang: status.jamPulang || globalJamPulang });
     const el = document.getElementById('popupCountdown');
     if (!el || newStatus.bisaMasuk) {
       clearInterval(interval);
@@ -180,7 +193,7 @@ function closeShiftPopup() {
 }
 
 async function renderLogin() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
+  stopAllStreams();
   sessionStorage.clear();
   currentUser = null;
   applyDarkMode();
@@ -226,7 +239,7 @@ async function login() {
 }
 
 function logout() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
+  stopAllStreams();
   sessionStorage.removeItem('user');
   currentUser = null;
   renderLogin();
@@ -273,12 +286,9 @@ function startLiveClock() {
     if (clockEl) clockEl.innerText = jam;
     if (dateEl) dateEl.innerText = tgl;
     const shiftEl = document.getElementById('liveShiftCountdown');
-    if (shiftEl) {
-      const jamPulang = document.getElementById('jamPulangData')?.value;
-      if (jamPulang && jamPulang!== '-') {
-        const status = cekStatusShift({ jamPulang });
-        shiftEl.innerText = status.bisaMasuk? 'Siap masuk!' : status.countdown;
-      }
+    if (shiftEl && globalJamPulang!== '-') {
+      const status = cekStatusShift({ jamPulang: globalJamPulang });
+      shiftEl.innerText = status.bisaMasuk? 'Siap masuk!' : status.countdown;
     }
   }
   update();
@@ -304,6 +314,7 @@ function updateCountdown(sudahMasuk, sudahPulang) {
 }
 
 async function renderHome() {
+  stopAllStreams();
   const [dashboardRes, rekapRes] = await Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
     apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
@@ -319,6 +330,7 @@ async function renderHome() {
   }
   const jamMasuk = dashboardRes.jamMasuk || '00:00';
   const jamPulang = dashboardRes.jamPulang || '00:00';
+  globalJamPulang = jamPulang; // FIX: simpen global
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
   const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
   const statusShift = cekStatusShift(dashboardRes);
@@ -352,6 +364,7 @@ async function renderHome() {
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
+    totalIzin = rekapRes.statistik.izin || 0; // FIX: ambil dari backend
   }
   const greeting = getGreeting();
   app.innerHTML = `
@@ -377,7 +390,6 @@ async function renderHome() {
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
     <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
-      <input type="hidden" id="jamPulangData" value="${jamPulang}">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <i class="${statusIcon} text-3xl"></i>
@@ -385,7 +397,6 @@ async function renderHome() {
             <p class="text-xs opacity-90">Status Hari Ini</p>
             <p class="font-bold text-lg">${statusText}</p>
           </div>
-        </div>
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
       ${infoShift}
@@ -455,7 +466,6 @@ async function renderHome() {
         `).join('')}
       </div>
     </div>
-  </div>
   ${renderBottomNav('home')}
   `;
   applyDarkMode();
@@ -463,7 +473,7 @@ async function renderHome() {
   updateCountdown(sudahMasuk, sudahPulang);
   initSwipeGesture();
 }
-// --- LANJUT KE BAGIAN 2 ---
+
 async function quickAbsen(tipe) {
   if (tipe === 'IN') {
     const dashboardRes = await apiCall('get_dashboard', { nama: currentUser.Nama.trim() });
@@ -478,10 +488,7 @@ async function quickAbsen(tipe) {
 }
 
 async function renderAbsen() {
-  if (absenStream) {
-    absenStream.getTracks().forEach(t => t.stop());
-    absenStream = null;
-  }
+  stopAllStreams();
   let alamat = 'Mendeteksi lokasi...';
   let jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   let tanggal = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -526,8 +533,8 @@ async function renderAbsen() {
     const { latitude, longitude } = pos.coords;
     currentLokasi = { lat: latitude, lon: longitude };
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-   .then(res => res.json())
-   .then(data => {
+  .then(res => res.json())
+  .then(data => {
         currentLokasi.alamat = data.display_name || `${latitude}, ${longitude}`;
         document.getElementById('alamatText').innerHTML = `<i class="ri-map-pin-line"></i> ${currentLokasi.alamat}`;
       }).catch(() => {
@@ -535,7 +542,7 @@ async function renderAbsen() {
         document.getElementById('alamatText').innerText = currentLokasi.alamat;
       });
 }, () => {
-    document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
+        document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
     showToast('GPS tidak aktif', 'error');
   });
 
@@ -629,7 +636,7 @@ function comingSoon() {
 }
 
 function renderAccount() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
+  stopAllStreams();
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
   foto = foto.replace(/\s/g, '');
   if (foto.includes('uc?export=view&id=')) {
@@ -675,11 +682,12 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
+  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
 }
-// --- LANJUT KE BAGIAN 3 ---
+
 function previewFoto(event) {
   const file = event.target.files[0];
   if (file) {
@@ -718,6 +726,7 @@ async function saveAccount() {
 }
 
 async function renderRekap() {
+  stopAllStreams();
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
@@ -778,7 +787,7 @@ async function loadRekapBulan() {
       <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
     </div>`;
 
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim() });
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan: bulan });
 
   if (res.status!== 'success') {
     content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
@@ -799,7 +808,10 @@ async function loadRekapBulan() {
 
   window.rekapDataBulanIni = Object.values(dataMap);
 
-  const totalHadir = Object.values(dataMap).filter(r => r['Jam Masuk'] && r['Jam Masuk']!== '-').length;
+  const totalHadir = res.statistik.hadir || 0;
+  const totalTerlambat = res.statistik.terlambat || 0;
+  const totalAlpa = res.statistik.alpa || 0;
+  const totalIzin = res.statistik.izin || 0;
   const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
   let html = `
@@ -836,14 +848,17 @@ async function loadRekapBulan() {
 
     if(r){
       idx = r._idx;
-      if(r['Jam Masuk'] && r['Jam Masuk']!== '-'){
-        if(r.Status === 'Terlambat'){
-          bg = 'bg-orange-500';
-          status = 'terlambat';
-        } else {
-          bg = 'bg-green-500';
-          status = 'hadir';
-        }
+      if(r.Status === 'Hadir'){
+        bg = 'bg-green-500';
+        status = 'hadir';
+        text = 'text-white';
+      } else if(r.Status === 'Terlambat'){
+        bg = 'bg-orange-500';
+        status = 'terlambat';
+        text = 'text-white';
+      } else if(r.Status === 'Izin'){
+        bg = 'bg-blue-500';
+        status = 'izin';
         text = 'text-white';
       } else {
         bg = 'bg-red-500';
@@ -864,9 +879,10 @@ async function loadRekapBulan() {
 
   html += `
       </div>
-      <div class="flex justify-center gap-4 mt-4 text-xs">
+      <div class="flex justify-center gap-3 mt-4 text-xs flex-wrap">
         <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div>Hadir</div>
-        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Terlambat</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Telat</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-500 rounded"></div>Izin</div>
         <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-500 rounded"></div>Alpa</div>
       </div>
     </div>
@@ -900,17 +916,27 @@ function showDetailTanggal(day, status, idx) {
   const lokasi = r.Lokasi || '-';
   const lat = r.Latitude || '';
   const lon = r.Longitude || '';
-  const warnaStatus = status === 'hadir'? 'text-green-600' : 'text-orange-600';
-  const iconStatus = status === 'hadir'? 'ri-checkbox-circle-line' : 'ri-time-line';
+  let warnaStatus = 'text-green-600';
+  let iconStatus = 'ri-checkbox-circle-line';
+  let labelStatus = 'Hadir Tepat Waktu';
+
+  if(status === 'terlambat') {
+    warnaStatus = 'text-orange-600';
+    iconStatus = 'ri-time-line';
+    labelStatus = 'Terlambat';
+  } else if(status === 'izin') {
+    warnaStatus = 'text-blue-600';
+    iconStatus = 'ri-mail-line';
+    labelStatus = 'Izin';
+  }
 
   el.innerHTML = `
     <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
       <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
       <div>
         <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
-        <p class="text-xs ${warnaStatus} font-semibold">${status === 'hadir'? 'Hadir Tepat Waktu' : 'Terlambat'}</p>
+        <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
       </div>
-    </div>
     <div class="grid grid-cols-3 gap-3 text-center mb-3">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
@@ -939,14 +965,12 @@ function showDetailTanggal(day, status, idx) {
           ` : ''}
         </div>
       </div>
-    </div>
     ` : ''}
   `;
   el.classList.remove('hidden');
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
-// --- INIT PALING AKHIR ---
 (function init() {
   applyDarkMode();
   currentUser? renderHome() : renderLogin();
