@@ -16,7 +16,7 @@ let isDragging = false;
 let globalJamPulang = '-';
 let patroliFoto = null;
 let kejadianFoto = null;
-let urgensiKejadian = 'Sedang';
+let urgensiKejadian = 'Rendah';
 
 function stopAllStreams() {
   if (absenStream) {
@@ -41,7 +41,7 @@ function toggleDarkMode() {
   isDarkMode =!isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
-  renderAccount();
+  renderHome(); // refresh biar icon ganti
 }
 
 function showToast(msg, type = 'success') {
@@ -62,7 +62,6 @@ function showToast(msg, type = 'success') {
 
 async function apiCall(action, payload = {}) {
   try {
-    console.log('API CALL:', action, payload);
     const res = await fetch(API_URL, {
       method: 'POST',
       redirect: 'follow',
@@ -70,11 +69,8 @@ async function apiCall(action, payload = {}) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
     const text = await res.text();
-    const result = JSON.parse(text);
-    console.log('API RESPONSE:', result);
-    return result;
+    return JSON.parse(text);
   } catch (e) {
-    console.error('API ERROR:', e);
     showToast('Gagal konek server', 'error');
     return { status: 'error', msg: e.message };
   }
@@ -88,33 +84,12 @@ function getGreeting() {
   return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
 }
 
-function formatTanggalIndo(tgl) {
-  if (!tgl) return '-';
-  let d, m, y;
-  if (tgl.includes('/')) {
-    [d, m, y] = tgl.split('/');
-  } else if (tgl.includes('-')) {
-    [y, m, d] = tgl.split('-');
-  } else {
-    return tgl;
-  }
-  const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const date = new Date(y, m - 1, d);
-  const hari = namaHari[date.getDay()];
-  return `${hari}, ${parseInt(d)} ${namaBulan[m - 1]} ${y}`;
-}
-
 function renderBottomNav(active) {
   return `
   <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
     <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
       <i class="ri-home-5-fill text-2xl"></i>
       <p class="font-semibold">Home</p>
-    </button>
-    <button onclick="renderPatroli()" class="flex flex-col items-center gap-1 ${active === 'patroli'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
-      <i class="ri-shield-user-fill text-2xl"></i>
-      <p class="font-semibold">Patroli</p>
     </button>
     <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
       <i class="ri-user-3-fill text-2xl"></i>
@@ -146,57 +121,6 @@ function cekStatusShift(dashboardRes) {
     countdown: `${sisaJam}j ${sisaMenit}m ${sisaDetik}d`,
     jamPulang: jamPulang
   };
-}
-
-function showShiftPopup(status) {
-  if (status.bisaMasuk) return;
-  const popup = document.createElement('div');
-  popup.id = 'shiftPopup';
-  popup.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4';
-  popup.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
-      <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white text-center">
-        <div class="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-          <i class="ri-time-line text-4xl"></i>
-        </div>
-        <h3 class="font-bold text-xl mb-1">Waktu Istirahat Shift</h3>
-        <p class="text-sm opacity-90">Kamu baru aja pulang. Butuh istirahat dulu</p>
-      </div>
-      <div class="p-6 text-center">
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Bisa absen masuk lagi dalam:</p>
-        <div id="popupCountdown" class="text-4xl font-extrabold text-orange-500 mb-4 font-header">${status.countdown}</div>
-        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 mb-4">
-          <p class="text-xs text-gray-600 dark:text-gray-400">Jadwal shift berikutnya</p>
-          <p class="font-bold text-gray-900 dark:text-white">${status.info.replace('Shift berikutnya: ', '')}</p>
-        </div>
-        <button onclick="closeShiftPopup()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold active:scale-95 transition">Oke, Mengerti</button>
-      </div>
-    </div>
-    <style>
-      @keyframes bounce-in { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-    .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
-    </style>
-  `;
-  document.body.appendChild(popup);
-  const interval = setInterval(() => {
-    const newStatus = cekStatusShift({ jamPulang: status.jamPulang || globalJamPulang });
-    const el = document.getElementById('popupCountdown');
-    if (!el || newStatus.bisaMasuk) {
-      clearInterval(interval);
-      closeShiftPopup();
-      if (newStatus.bisaMasuk) showToast('Sekarang udah bisa absen masuk!', 'success');
-      return;
-    }
-    el.innerText = newStatus.countdown;
-  }, 1000);
-}
-
-function closeShiftPopup() {
-  const popup = document.getElementById('shiftPopup');
-  if (popup) {
-    popup.style.opacity = '0';
-    setTimeout(() => popup.remove(), 200);
-  }
 }
 
 async function renderLogin() {
@@ -302,24 +226,6 @@ function startLiveClock() {
   liveClockInterval = setInterval(update, 1000);
 }
 
-function updateCountdown(sudahMasuk, sudahPulang) {
-  if (!sudahMasuk || sudahPulang) return;
-  const el = document.getElementById('countdownPulang');
-  if (!el) return;
-  const now = new Date();
-  const pulang = new Date();
-  pulang.setHours(17, 0, 0, 0);
-  if (now > pulang) {
-    el.innerText = 'Waktunya pulang!';
-    return;
-  }
-  const diff = pulang - now;
-  const jam = Math.floor(diff / 3600000);
-  const menit = Math.floor((diff % 3600000) / 60000);
-  el.innerText = `Pulang dalam ${jam} jam ${menit} menit`;
-  setTimeout(() => updateCountdown(true, false), 60000);
-}
-
 async function renderHome() {
   stopAllStreams();
   const [dashboardRes, rekapRes] = await Promise.all([
@@ -374,6 +280,8 @@ async function renderHome() {
     totalIzin = rekapRes.statistik.izin || 0;
   }
   const greeting = getGreeting();
+  const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
+
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -388,9 +296,14 @@ async function renderHome() {
     </div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="mb-4">
-      <div class="flex items-center gap-2 mb-1">
-        <i class="${greeting.icon} text-2xl ${greeting.color}"></i>
-        <p class="text-lg font-bold text-gray-800 dark:text-white">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <i class="${greeting.icon} text-2xl ${greeting.color}"></i>
+          <p class="text-lg font-bold text-gray-800 dark:text-white">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
+        </div>
+        <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center active:scale-90 transition">
+          <i class="${darkIcon} text-xl"></i>
+        </button>
       </div>
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
@@ -418,7 +331,6 @@ async function renderHome() {
                 <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
                 <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
               </div>
-            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
@@ -431,23 +343,25 @@ async function renderHome() {
             </div>
             <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
           </div>
+        </div>
         <div class="w-full flex-shrink-0">
-          <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow-xl">
+          <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl p-5 shadow-xl">
             <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
             <div class="grid grid-cols-3 gap-3 text-center mb-4">
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalHadir}</p>
+              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
+                <p class="text-3xl font-bold text-green-600 dark:text-green-400">${totalHadir}</p>
                 <p class="text-xs opacity-90 mt-1">Hadir</p>
               </div>
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalIzin}</p>
+              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
+                <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">${totalIzin}</p>
                 <p class="text-xs opacity-90 mt-1">Izin</p>
               </div>
-              <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                <p class="text-3xl font-bold">${totalAlpa}</p>
+              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
+                <p class="text-3xl font-bold text-red-600 dark:text-red-400">${totalAlpa}</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
-            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
+            </div>
+            <button onclick="renderRekap()" class="w-full bg-[#800000] text-white py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
           </div>
         </div>
       </div>
@@ -460,19 +374,30 @@ async function renderHome() {
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
-        ${[
-          {icon:'ri-shield-user-line', label:'Patroli', color:'from-green-600 to-green-700', click:'renderPatroli()'},
-          {icon:'ri-mail-send-line', label:'Izin', color:'from-orange-500 to-orange-600', click:'comingSoon()'},
-          {icon:'ri-alarm-warning-line', label:'Darurat', color:'from-yellow-500 to-yellow-600', click:'comingSoon()'},
-          {icon:'ri-logout-box-r-line', label:'Keluar', color:'from-red-500 to-red-600', click:'logout()'}
-        ].map(m => `
-          <button onclick="${m.click}" class="flex flex-col items-center gap-2 active:scale-90 transition group">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center shadow-lg group-active:scale-110 transition">
-              <i class="${m.icon} text-3xl text-white"></i>
-            </div>
-            <p class="text-xs font-bold text-gray-700 dark:text-gray-300">${m.label}</p>
-          </button>
-        `).join('')}
+        <button onclick="renderPatroli()" class="flex flex-col items-center gap-2 active:scale-90 transition group">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center shadow-lg group-active:scale-110 transition">
+            <i class="ri-shield-user-line text-3xl text-white"></i>
+          </div>
+          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Patroli</p>
+        </button>
+        <button onclick="comingSoon()" class="flex flex-col items-center gap-2 active:scale-90 transition group">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-active:scale-110 transition">
+            <i class="ri-mail-send-line text-3xl text-white"></i>
+          </div>
+          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Izin</p>
+        </button>
+        <button onclick="comingSoon()" class="flex flex-col items-center gap-2 active:scale-90 transition group">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg group-active:scale-110 transition">
+            <i class="ri-alarm-warning-line text-3xl text-white"></i>
+          </div>
+          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Darurat</p>
+        </button>
+        <button onclick="logout()" class="flex flex-col items-center gap-2 active:scale-90 transition group">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg group-active:scale-110 transition">
+            <i class="ri-logout-box-r-line text-3xl text-white"></i>
+          </div>
+          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Keluar</p>
+        </button>
       </div>
     </div>
   </div>
@@ -483,9 +408,7 @@ async function renderHome() {
   updateCountdown(sudahMasuk, sudahPulang);
   initSwipeGesture();
 }
-// --- LANJUT KE BAGIAN 2: PATROLI + KEJADIAN ---
-// --- LANJUTAN DARI renderHome ---
-
+// Lanjut BAGIAN 3: Absen, Patroli, Lapor Kejadian, Rekap, Account
 async function quickAbsen(tipe) {
   if (tipe === 'IN') {
     const dashboardRes = await apiCall('get_dashboard', { nama: currentUser.Nama.trim() });
@@ -624,7 +547,7 @@ async function submitAbsen() {
   const alamat = currentLokasi? currentLokasi.alamat : document.getElementById('alamatText').innerText;
   const res = await apiCall('absen', {
     nama: currentUser.Nama.trim(),
-    lokasiWajib: alamat,
+        lokasiWajib: alamat,
     foto: absenFoto,
     tipe: absenTipe,
     latitude: currentLokasi? currentLokasi.lat : null,
@@ -667,20 +590,6 @@ function renderAccount() {
       <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
       <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
       <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 mb-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="ri-moon-clear-line text-2xl text-indigo-500"></i>
-          <div>
-            <p class="font-bold text-gray-900 dark:text-white">Dark Mode</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Mode gelap untuk mata</p>
-          </div>
-        </div>
-        <button onclick="toggleDarkMode()" class="relative w-14 h-8 rounded-full transition ${isDarkMode? 'bg-[#800000]' : 'bg-gray-300'}">
-          <div class="absolute top-1 ${isDarkMode? 'right-1' : 'left-1'} w-6 h-6 bg-white rounded-full transition shadow-md"></div>
-        </button>
-      </div>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
       <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
@@ -980,7 +889,7 @@ function showDetailTanggal(day, status, idx) {
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
-// --- FITUR BARU: PATROLI ---
+// --- PATROLI ---
 async function renderPatroli() {
   stopAllStreams();
   patroliFoto = null;
@@ -1013,7 +922,7 @@ async function renderPatroli() {
       <div class="relative w-full h-48 mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
         <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
         <img id="previewPatroli" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
           <i class="ri-camera-line text-4xl"></i>
           <p class="text-sm font-semibold">Tap untuk buka kamera</p>
         </button>
@@ -1034,7 +943,7 @@ async function renderPatroli() {
       <i class="ri-alarm-warning-line text-xl"></i> Lapor Kejadian Darurat
     </button>
   </div>
-  ${renderBottomNav('patroli')}
+  ${renderBottomNav('home')}
   `;
   applyDarkMode();
 
@@ -1138,7 +1047,7 @@ async function submitPatroli() {
   }
 }
 
-// --- FITUR BARU: LAPOR KEJADIAN ---
+// --- LAPOR KEJADIAN ---
 async function renderLaporKejadian() {
   stopAllStreams();
   kejadianFoto = null;
@@ -1191,7 +1100,7 @@ async function renderLaporKejadian() {
         <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
           <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
           <img id="previewKejadian" class="w-full h-full object-cover hidden" />
-          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
             <i class="ri-camera-line text-4xl"></i>
             <p class="text-sm font-semibold">Tap untuk buka kamera</p>
           </button>
@@ -1199,16 +1108,17 @@ async function renderLaporKejadian() {
             <i class="ri-camera-fill"></i> Ambil Foto
           </button>
         </div>
-            </div>
+      </div>
 
       <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
         <i class="ri-send-plane-fill"></i> Kirim Laporan
       </button>
     </div>
-  ${renderBottomNav('patroli')}
+  </div>
+  ${renderBottomNav('home')}
   `;
   applyDarkMode();
-  window.urgensiKejadian = 'Rendah'; // default
+  window.urgensiKejadian = 'Rendah';
 }
 
 function setUrgensi(level) {
@@ -1261,7 +1171,7 @@ async function submitKejadian() {
   const deskripsi = document.getElementById('deskripsiKejadian').value;
   const btn = document.getElementById('btnSubmitKejadian');
 
-  if (!jenis) {
+    if (!jenis) {
     showToast('Pilih jenis kejadian dulu!', 'error');
     return;
   }
