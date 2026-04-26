@@ -104,18 +104,91 @@ function renderBottomNav(active) {
   </div>`;
 }
 
+function cekStatusShift(dashboardRes) {
+  const jamMasuk = dashboardRes.jamMasuk || '-';
+  const jamPulang = dashboardRes.jamPulang || '-';
+  if (jamPulang === '-' || jamPulang === '00:00') return { bisaMasuk: true, info: '' };
+  const now = new Date();
+  const [jamP, menitP, detikP = 0] = jamPulang.split(':');
+  const waktuPulang = new Date();
+  waktuPulang.setHours(parseInt(jamP), parseInt(menitP), parseInt(detikP));
+  if (waktuPulang > now) waktuPulang.setDate(waktuPulang.getDate() - 1);
+  const bisaMasukLagi = new Date(waktuPulang.getTime() + 12 * 60 * 60 * 1000);
+  const selisihMs = bisaMasukLagi - now;
+  if (selisihMs <= 0) return { bisaMasuk: true, info: 'Siap untuk shift berikutnya!' };
+  const sisaJam = Math.floor(selisihMs / 3600000);
+  const sisaMenit = Math.floor((selisihMs % 3600000) / 60000);
+  const sisaDetik = Math.floor((selisihMs % 60000) / 1000);
+  const jamBuka = bisaMasukLagi.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  return {
+    bisaMasuk: false,
+    sisaMs: selisihMs,
+    info: `Shift berikutnya: ${jamBuka}`,
+    countdown: `${sisaJam}j ${sisaMenit}m ${sisaDetik}d`
+  };
+}
+
+function showShiftPopup(status) {
+  if (status.bisaMasuk) return;
+  const popup = document.createElement('div');
+  popup.id = 'shiftPopup';
+  popup.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4';
+  popup.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
+      <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white text-center">
+        <div class="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+          <i class="ri-time-line text-4xl"></i>
+        </div>
+        <h3 class="font-bold text-xl mb-1">Waktu Istirahat Shift</h3>
+        <p class="text-sm opacity-90">Kamu baru aja pulang. Butuh istirahat dulu</p>
+      </div>
+      <div class="p-6 text-center">
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Bisa absen masuk lagi dalam:</p>
+        <div id="popupCountdown" class="text-4xl font-extrabold text-orange-500 mb-4 font-header">${status.countdown}</div>
+        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 mb-4">
+          <p class="text-xs text-gray-600 dark:text-gray-400">Jadwal shift berikutnya</p>
+          <p class="font-bold text-gray-900 dark:text-white">${status.info.replace('Shift berikutnya: ', '')}</p>
+        </div>
+        <button onclick="closeShiftPopup()" class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold active:scale-95 transition">Oke, Mengerti</button>
+      </div>
+    </div>
+    <style>
+      @keyframes bounce-in { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+     .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
+    </style>
+  `;
+  document.body.appendChild(popup);
+  const interval = setInterval(() => {
+    const newStatus = cekStatusShift({ jamPulang: document.getElementById('jamPulangData')?.value });
+    const el = document.getElementById('popupCountdown');
+    if (!el || newStatus.bisaMasuk) {
+      clearInterval(interval);
+      closeShiftPopup();
+      if (newStatus.bisaMasuk) showToast('Sekarang udah bisa absen masuk!', 'success');
+      return;
+    }
+    el.innerText = newStatus.countdown;
+  }, 1000);
+}
+
+function closeShiftPopup() {
+  const popup = document.getElementById('shiftPopup');
+  if (popup) {
+    popup.style.opacity = '0';
+    setTimeout(() => popup.remove(), 200);
+  }
+}
+
 async function renderLogin() {
   if (liveClockInterval) clearInterval(liveClockInterval);
   sessionStorage.clear();
   currentUser = null;
   applyDarkMode();
-
   const res = await apiCall('get_setting');
   if (res.status === 'success') {
     appSetting = res.data;
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
-
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
     <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
@@ -144,7 +217,6 @@ async function login() {
     appSetting = res.setting || {};
     sessionStorage.setItem('user', JSON.stringify(currentUser));
     sessionStorage.setItem('setting', JSON.stringify(appSetting));
-    console.log('LOGIN SUCCESS, USER:', currentUser);
     showToast('Login berhasil!', 'success');
     setTimeout(() => renderHome(), 500);
   } else {
@@ -163,28 +235,21 @@ function logout() {
 function initSwipeGesture() {
   const wrapper = document.getElementById('swipeWrapper');
   if (!wrapper) return;
-
   wrapper.addEventListener('touchstart', (e) => {
     startX = e.touches[0].clientX;
     isDragging = true;
   }, { passive: true });
-
   wrapper.addEventListener('touchmove', (e) => {
     if (!isDragging) return;
     currentX = e.touches[0].clientX;
   }, { passive: true });
-
   wrapper.addEventListener('touchend', (e) => {
     if (!isDragging) return;
     isDragging = false;
     const diff = startX - currentX;
-
     if (Math.abs(diff) > 50) {
-      if (diff > 0 && currentCard === 0) {
-        swipeCard(1);
-      } else if (diff < 0 && currentCard === 1) {
-        swipeCard(0);
-      }
+      if (diff > 0 && currentCard === 0) swipeCard(1);
+      else if (diff < 0 && currentCard === 1) swipeCard(0);
     }
   }, { passive: true });
 }
@@ -207,6 +272,14 @@ function startLiveClock() {
     const dateEl = document.getElementById('liveDate');
     if (clockEl) clockEl.innerText = jam;
     if (dateEl) dateEl.innerText = tgl;
+    const shiftEl = document.getElementById('liveShiftCountdown');
+    if (shiftEl) {
+      const jamPulang = document.getElementById('jamPulangData')?.value;
+      if (jamPulang && jamPulang!== '-') {
+        const status = cekStatusShift({ jamPulang });
+        shiftEl.innerText = status.bisaMasuk? 'Siap masuk!' : status.countdown;
+      }
+    }
   }
   update();
   liveClockInterval = setInterval(update, 1000);
@@ -231,13 +304,10 @@ function updateCountdown(sudahMasuk, sudahPulang) {
 }
 
 async function renderHome() {
-  console.log('RENDER HOME, USER:', currentUser);
-
   const [dashboardRes, rekapRes] = await Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
     apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
   ]);
-
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   fotoUser = fotoUser.replace(/\s/g, '');
   if (fotoUser.includes('uc?export=view&id=')) {
@@ -247,47 +317,49 @@ async function renderHome() {
   if (fotoUser.includes('drive.google.com')) {
     fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
   }
-
   const jamMasuk = dashboardRes.jamMasuk || '00:00';
   const jamPulang = dashboardRes.jamPulang || '00:00';
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
   const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-
+  const statusShift = cekStatusShift(dashboardRes);
   let statusText = 'Belum Absen Masuk';
   let statusColor = 'bg-red-500';
   let statusIcon = 'ri-close-circle-line';
-
+  let infoShift = '';
   if (sudahPulang) {
     statusText = `Sudah Pulang ${jamPulang}`;
     statusColor = 'bg-blue-500';
     statusIcon = 'ri-home-4-line';
+    if (!statusShift.bisaMasuk) {
+      infoShift = `
+        <div class="mt-3 pt-3 border-t border-white/30">
+          <div class="flex items-center justify-between text-xs">
+            <span class="opacity-90"><i class="ri-timer-line"></i> Istirahat shift:</span>
+            <span id="liveShiftCountdown" class="font-bold">${statusShift.countdown}</span>
+          </div>
+          <p class="text-xs opacity-80 mt-1">${statusShift.info}</p>
+        </div>
+      `;
+    }
   } else if (sudahMasuk) {
     statusText = `Sudah Masuk ${jamMasuk}`;
     statusColor = 'bg-green-500';
     statusIcon = 'ri-checkbox-circle-line';
   }
-
   let totalHadir = 0;
   let totalIzin = 0;
   let totalAlpa = 0;
-
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
-    console.log('STATISTIK DARI SERVER:', rekapRes.statistik);
   }
-
   const greeting = getGreeting();
-
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap"
-           style="font-size: clamp(11px, 3.5vw, 16px);">
-           ABSENSI KEHADIRAN TERPADU
-        </p>
+        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">ABSENSI KEHADIRAN TERPADU</p>
       </div>
     </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
@@ -295,7 +367,6 @@ async function renderHome() {
       <i class="ri-menu-line"></i>
     </div>
   </div>
-
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="mb-4">
       <div class="flex items-center gap-2 mb-1">
@@ -305,8 +376,8 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
-
     <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
+      <input type="hidden" id="jamPulangData" value="${jamPulang}">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <i class="${statusIcon} text-3xl"></i>
@@ -317,9 +388,9 @@ async function renderHome() {
         </div>
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
+      ${infoShift}
       <div id="countdownPulang" class="text-xs mt-2 opacity-90"></div>
     </div>
-
     <div class="relative overflow-hidden rounded-2xl" id="swipeWrapper">
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
@@ -341,12 +412,9 @@ async function renderHome() {
                 <p class="font-bold text-sm">Absen Pulang</p>
               </button>
             </div>
-            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">
-              Buka Kamera Absen
-            </button>
+            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
           </div>
         </div>
-
         <div class="w-full flex-shrink-0">
           <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow-xl">
             <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
@@ -364,31 +432,20 @@ async function renderHome() {
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
             </div>
-            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">
-              Lihat Detail Rekap
-            </button>
+            <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
           </div>
         </div>
       </div>
-
       <div class="flex justify-center gap-2 mt-3">
         <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
         <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
       </div>
-      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">
-        <i class="ri-drag-move-line"></i> Geser untuk lihat statistik
-      </p>
+      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
     </div>
-
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Cepat</p>
       <div class="grid grid-cols-4 gap-3">
-        ${[
-          {icon:'ri-calendar-check-line', label:'Rekap', color:'from-blue-500 to-blue-600', click:'renderRekap()'},
-          {icon:'ri-mail-send-line', label:'Izin', color:'from-orange-500 to-orange-600', click:'comingSoon()'},
-          {icon:'ri-time-line', label:'Lembur', color:'from-purple-500 to-purple-600', click:'comingSoon()'},
-          {icon:'ri-logout-box-r-line', label:'Keluar', color:'from-red-500 to-red-600', click:'logout()'}
-        ].map(m => `
+        ${[{icon:'ri-calendar-check-line', label:'Rekap', color:'from-blue-500 to-blue-600', click:'renderRekap()'},{icon:'ri-mail-send-line', label:'Izin', color:'from-orange-500 to-orange-600', click:'comingSoon()'},{icon:'ri-time-line', label:'Lembur', color:'from-purple-500 to-purple-600', click:'comingSoon()'},{icon:'ri-logout-box-r-line', label:'Keluar', color:'from-red-500 to-red-600', click:'logout()'}].map(m => `
           <button onclick="${m.click}" class="flex flex-col items-center gap-2 active:scale-90 transition group">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center shadow-lg group-active:scale-110 transition">
               <i class="${m.icon} text-2xl text-white"></i>
@@ -401,14 +458,21 @@ async function renderHome() {
   </div>
   ${renderBottomNav('home')}
   `;
-
   applyDarkMode();
   startLiveClock();
   updateCountdown(sudahMasuk, sudahPulang);
   initSwipeGesture();
 }
-// --- BATAS BAGIAN 1 ---
+// --- LANJUT KE BAGIAN 2 ---
 async function quickAbsen(tipe) {
+  if (tipe === 'IN') {
+    const dashboardRes = await apiCall('get_dashboard', { nama: currentUser.Nama.trim() });
+    const status = cekStatusShift(dashboardRes);
+    if (!status.bisaMasuk) {
+      showShiftPopup(status);
+      return;
+    }
+  }
   showToast(`Membuka kamera untuk Absen ${tipe}...`, 'success');
   setTimeout(() => renderAbsen(), 300);
 }
@@ -418,11 +482,9 @@ async function renderAbsen() {
     absenStream.getTracks().forEach(t => t.stop());
     absenStream = null;
   }
-
   let alamat = 'Mendeteksi lokasi...';
   let jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   let tanggal = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
@@ -432,11 +494,9 @@ async function renderAbsen() {
     <p id="alamatText" class="text-sm text-gray-600 dark:text-gray-400 mb-4">${alamat}</p>
     <p class="text-5xl font-bold font-header text-gray-900 dark:text-white">${jam}</p>
     <p class="text-lg text-gray-700 dark:text-gray-300 mb-6">${tanggal}</p>
-
     <div class="relative w-64 h-64 mx-auto mb-6">
       <video id="camera" class="w-full h-full object-cover rounded-full bg-gray-200 dark:bg-gray-700" autoplay playsinline></video>
       <img id="previewAbsen" class="w-full h-full object-cover rounded-full bg-gray-200 dark:bg-gray-700 hidden" />
-
       <div id="faceFrame" class="absolute inset-0 pointer-events-none">
         <svg class="w-full h-full" viewBox="0 0 256 256">
           <circle cx="128" cy="128" r="110" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="10 5" opacity="0.6">
@@ -444,11 +504,8 @@ async function renderAbsen() {
           </circle>
           <circle cx="128" cy="128" r="100" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.3"/>
         </svg>
-        <div id="faceStatus" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-xs font-semibold">
-          Posisikan wajah di tengah
-        </div>
+        <div id="faceStatus" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-xs font-semibold">Posisikan wajah di tengah</div>
       </div>
-
       <button onclick="ambilFoto()" id="btnCapture" class="absolute inset-0 flex items-center justify-center">
         <div id="iconKamera" class="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-xl">
           <i class="ri-camera-line text-4xl text-gray-700"></i>
@@ -456,18 +513,15 @@ async function renderAbsen() {
       </button>
     </div>
     <canvas id="canvas" class="hidden"></canvas>
-
     <div class="flex justify-center mb-6 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
       <button id="btnIn" onclick="setTipe('IN')" class="flex-1 px-6 py-3 rounded-lg font-bold text-white bg-blue-500 shadow-md transition">IN</button>
       <button id="btnOut" onclick="setTipe('OUT')" class="flex-1 px-6 py-3 rounded-lg font-bold bg-transparent text-gray-600 dark:text-gray-300 transition">OUT</button>
     </div>
-
     <button onclick="submitAbsen()" id="btnSubmit" class="w-full text-white p-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>Submit Absen</button>
     <p id="statusAbsen" class="text-sm text-red-500 mt-2"></p>
   </div>
   ${renderBottomNav('home')}
   `;
-
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     currentLokasi = { lat: latitude, lon: longitude };
@@ -480,7 +534,7 @@ async function renderAbsen() {
         currentLokasi.alamat = `${latitude}, ${longitude}`;
         document.getElementById('alamatText').innerText = currentLokasi.alamat;
       });
-  }, () => {
+}, () => {
     document.getElementById('alamatText').innerText = 'Gagal dapat lokasi. Aktifkan GPS.';
     showToast('GPS tidak aktif', 'error');
   });
@@ -625,7 +679,7 @@ function renderAccount() {
   `;
   applyDarkMode();
 }
-
+// --- LANJUT KE BAGIAN 3 ---
 function previewFoto(event) {
   const file = event.target.files[0];
   if (file) {
@@ -870,7 +924,6 @@ function showDetailTanggal(day, status, idx) {
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
         <p class="font-bold text-sm text-[#800000]">${durasi}</p>
       </div>
-    </div>
     ${lokasi!== '-'? `
     <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
       <div class="flex items-start gap-2">
