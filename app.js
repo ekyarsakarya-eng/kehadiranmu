@@ -19,6 +19,13 @@ let patroliFoto = null;
 let kejadianFoto = null;
 let urgensiKejadian = 'Rendah';
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+if ('Notification' in window) Notification.requestPermission();
+
 function stopAllStreams() {
   if (absenStream) {
     absenStream.getTracks().forEach(t => t.stop());
