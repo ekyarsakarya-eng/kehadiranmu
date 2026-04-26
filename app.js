@@ -289,6 +289,7 @@ async function renderHome() {
            ABSENSI KEHADIRAN TERPADU
         </p>
       </div>
+    </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
@@ -323,20 +324,19 @@ async function renderHome() {
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
           <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-3">
-                <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg">
-                <div>
-                  <p class="font-bold text-lg">${currentUser.Nama}</p>
-                  <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
-                </div>
+            <div class="flex items-center gap-3 mb-4">
+              <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg flex-shrink-0">
+              <div class="min-w-0">
+                <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
+                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
               </div>
+            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
-              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
+              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
                 <p class="font-bold text-sm">Absen Masuk</p>
               </button>
-              <button onclick="quickAbsen('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition">
+              <button onclick="quickAbsen('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
                 <i class="ri-logout-circle-line text-3xl mb-1"></i>
                 <p class="font-bold text-sm">Absen Pulang</p>
               </button>
@@ -363,6 +363,7 @@ async function renderHome() {
                 <p class="text-3xl font-bold">${totalAlpa}</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
+            </div>
             <button onclick="renderRekap()" class="w-full bg-white text-blue-600 py-3 rounded-xl font-bold active:scale-95 transition">
               Lihat Detail Rekap
             </button>
@@ -397,6 +398,7 @@ async function renderHome() {
         `).join('')}
       </div>
     </div>
+  </div>
   ${renderBottomNav('home')}
   `;
 
