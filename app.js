@@ -330,7 +330,7 @@ async function renderHome() {
   }
   const jamMasuk = dashboardRes.jamMasuk || '00:00';
   const jamPulang = dashboardRes.jamPulang || '00:00';
-  globalJamPulang = jamPulang; // FIX: simpen global
+  globalJamPulang = jamPulang;
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
   const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
   const statusShift = cekStatusShift(dashboardRes);
@@ -364,7 +364,7 @@ async function renderHome() {
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
-    totalIzin = rekapRes.statistik.izin || 0; // FIX: ambil dari backend
+    totalIzin = rekapRes.statistik.izin || 0;
   }
   const greeting = getGreeting();
   app.innerHTML = `
@@ -372,7 +372,7 @@ async function renderHome() {
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
       <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">ABSENSI KEHADIRAN TERPADU</p>
+        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">ABSENSI SATPAM TERPADU</p>
       </div>
     </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
@@ -397,6 +397,7 @@ async function renderHome() {
             <p class="text-xs opacity-90">Status Hari Ini</p>
             <p class="font-bold text-lg">${statusText}</p>
           </div>
+        </div>
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
       ${infoShift}
@@ -410,9 +411,8 @@ async function renderHome() {
               <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg flex-shrink-0">
               <div class="min-w-0">
                 <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
-                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'}</p>
+                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
               </div>
-            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
@@ -454,18 +454,24 @@ async function renderHome() {
       <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
     </div>
     <div class="mt-6">
-      <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Cepat</p>
+      <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
-        ${[{icon:'ri-calendar-check-line', label:'Rekap', color:'from-blue-500 to-blue-600', click:'renderRekap()'},{icon:'ri-mail-send-line', label:'Izin', color:'from-orange-500 to-orange-600', click:'comingSoon()'},{icon:'ri-time-line', label:'Lembur', color:'from-purple-500 to-purple-600', click:'comingSoon()'},{icon:'ri-logout-box-r-line', label:'Keluar', color:'from-red-500 to-red-600', click:'logout()'}].map(m => `
+        ${[
+          {icon:'ri-shield-user-line', label:'Patroli', color:'from-green-600 to-green-700', click:'renderPatroli()'},
+          {icon:'ri-mail-send-line', label:'Izin', color:'from-orange-500 to-orange-600', click:'comingSoon()'},
+          {icon:'ri-alarm-warning-line', label:'Darurat', color:'from-yellow-500 to-yellow-600', click:'comingSoon()'},
+          {icon:'ri-logout-box-r-line', label:'Keluar', color:'from-red-500 to-red-600', click:'logout()'}
+        ].map(m => `
           <button onclick="${m.click}" class="flex flex-col items-center gap-2 active:scale-90 transition group">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center shadow-lg group-active:scale-110 transition">
-              <i class="${m.icon} text-2xl text-white"></i>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br ${m.color} flex items-center justify-center shadow-lg group-active:scale-110 transition">
+              <i class="${m.icon} text-3xl text-white"></i>
             </div>
-            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300">${m.label}</p>
+            <p class="text-xs font-bold text-gray-700 dark:text-gray-300">${m.label}</p>
           </button>
         `).join('')}
       </div>
     </div>
+  </div>
   ${renderBottomNav('home')}
   `;
   applyDarkMode();
