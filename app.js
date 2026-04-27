@@ -652,47 +652,102 @@ async function saveAccount() {
   }
 }
 
+let rekapDataCache = [];
+let rekapPage = 0;
+const REKAP_PER_PAGE = 10;
+
 async function renderRekap() {
   stopAllStreams();
   app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Riwayat Absensi</h1>
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()" class="text-2xl text-gray-600 dark:text-gray-300"><i class="ri-arrow-left-line"></i></button>
+    <p class="font-bold text-lg text-gray-900 dark:text-white">Riwayat Absensi</p>
   </div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-4">
-      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Pilih Bulan</label>
-      <select id="bulanRekap" onchange="loadRekapBulan()" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-[#800000] focus:outline-none">
-        <option value="">-- Pilih Bulan --</option>
+    <div class="mb-4">
+      <select id="filterBulan" onchange="loadRekapData()" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold">
+        ${generateBulanOptions()}
       </select>
     </div>
     <div id="rekapContent">
-      <div class="text-center py-12 text-gray-400 dark:text-gray-600">
-        <i class="ri-calendar-todo-line text-5xl mb-3"></i>
-        <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
+      <div class="animate-pulse space-y-3">
+        <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+        <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
       </div>
     </div>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-
+  ${renderBottomNav('home')}`;
   applyDarkMode();
-  const bulanSelect = document.getElementById('bulanRekap');
-  const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  const now = new Date();
+  loadRekapData();
+}
 
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const value = `${year}-${month}`;
-    const label = `${namaBulan[d.getMonth()]} ${year}`;
-    bulanSelect.innerHTML += `<option value="${value}">${label}</option>`;
+async function loadRekapData() {
+  const bulan = document.getElementById('filterBulan').value;
+  const container = document.getElementById('rekapContent');
+  container.innerHTML = `<div class="animate-pulse space-y-3">
+    <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+    <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+  </div>`;
+
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan });
+  rekapDataCache = res.data || [];
+  rekapPage = 0;
+  renderRekapPage(true);
+}
+
+function renderRekapPage(reset = false) {
+  const container = document.getElementById('rekapContent');
+  const start = rekapPage * REKAP_PER_PAGE;
+  const end = start + REKAP_PER_PAGE;
+  const pageData = rekapDataCache.slice(start, end);
+
+  if (reset) {
+    if (rekapDataCache.length === 0) {
+      container.innerHTML = `<div class="text-center py-10 text-gray-500 dark:text-gray-400">
+        <i class="ri-file-list-3-line text-5xl mb-2"></i>
+        <p>Belum ada data absensi bulan ini</p>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = `<div id="rekapList" class="space-y-3"></div>
+      <div id="rekapLoadMore" class="text-center mt-4"></div>`;
   }
 
-  const bulanIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  bulanSelect.value = bulanIni;
-  loadRekapBulan();
+  const list = document.getElementById('rekapList');
+  pageData.forEach(r => {
+    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'yellow' : r.Status === 'Izin'? 'blue' : 'red';
+    const statusIcon = r.Status === 'Hadir'? 'ri-checkbox-circle-fill' : r.Status === 'Terlambat'? 'ri-time-fill' : r.Status === 'Izin'? 'ri-mail-fill' : 'ri-close-circle-fill';
+
+    list.innerHTML += `
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <p class="font-bold text-gray-900 dark:text-white">${r.Tanggal}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">${r.Durasi}</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-${statusColor}-100 dark:bg-${statusColor}-900 text-${statusColor}-700 dark:text-${statusColor}-300">
+          <i class="${statusIcon}"></i> ${r.Status}
+        </span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Masuk</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Masuk']}</p></div>
+        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Pulang</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Pulang']}</p></div>
+      </div>
+      ${r.Foto_IN? `<img src="${r.Foto_IN}" loading="lazy" class="w-full h-32 object-cover rounded-lg mt-2" />` : ''}
+    </div>`;
+  });
+
+  const loadMore = document.getElementById('rekapLoadMore');
+  if (end < rekapDataCache.length) {
+    loadMore.innerHTML = `<button onclick="loadMoreRekap()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl font-bold active:scale-95">Muat Lainnya</button>`;
+  } else {
+    loadMore.innerHTML = `<p class="text-xs text-gray-400">Semua data ditampilkan</p>`;
+  }
+}
+
+function loadMoreRekap() {
+  rekapPage++;
+  renderRekapPage(false);
 }
 
 async function loadRekapBulan() {
