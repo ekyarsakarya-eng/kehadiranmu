@@ -252,23 +252,44 @@ async function startCameraAbsen() {
 function ambilFotoAbsen() {
   const video = document.getElementById('cameraAbsen');
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  absenFoto = canvas.toDataURL('image/jpeg', 0.8);
+  const ctx = canvas.getContext('2d');
+  
+  // Resize ke max 800px biar file kecil
+  const maxSize = 800;
+  let width = video.videoWidth;
+  let height = video.videoHeight;
+  if (width > height) {
+    if (width > maxSize) {
+      height = height * (maxSize / width);
+      width = maxSize;
+    }
+  } else {
+    if (height > maxSize) {
+      width = width * (maxSize / height);
+      height = maxSize;
+    }
+  }
+  
+  canvas.width = width;
+  canvas.height = height;
+  ctx.drawImage(video, 0, 0, width, height);
+  
+  // Kompres ke 0.6 = 60% quality, hasilnya ~100-200KB
+  absenFoto = canvas.toDataURL('image/jpeg', 0.6);
+  
   const preview = document.getElementById('previewAbsen');
   preview.src = absenFoto;
   preview.classList.remove('hidden');
   video.classList.add('hidden');
   document.getElementById('btnCapture').classList.add('hidden');
   document.getElementById('btnSubmitAbsen').disabled = false;
+  
   if (absenStream) {
     absenStream.getTracks().forEach(track => track.stop());
     absenStream = null;
   }
-  showToast('Foto berhasil diambil!', 'success');
+  showToast('Foto siap!', 'success');
 }
-
 async function submitAbsen() {
   if (!absenFoto) {
     showToast('Ambil foto dulu!', 'error');
@@ -278,18 +299,31 @@ async function submitAbsen() {
   btn.disabled = true;
   btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
   
+  // GPS dengan timeout 3 detik aja
+  let lat = null, lon = null;
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+    });
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  } catch (e) {
+    console.log('GPS timeout, lanjut tanpa lokasi');
+  }
+  
   const res = await apiCall('absen', {
     nama: currentUser.Nama.trim(),
     tipe: absenTipe,
     foto: absenFoto,
-    latitude: currentLokasi?.lat || null,
-    longitude: currentLokasi?.lon || null,
-    lokasi: currentLokasi? `${currentLokasi.lat}, ${currentLokasi.lon}` : ''
+    latitude: lat,
+    longitude: lon,
+    lokasi: lat? `${lat}, ${lon}` : ''
   });
   
   if (res.status === 'success') {
     showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 1500);
+    // Gak usah renderHome(), langsung balik aja
+    setTimeout(() => renderHome(), 800);
   } else {
     btn.disabled = false;
     btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
@@ -361,47 +395,13 @@ function startLiveClock() {
 
 async function renderHome() {
   stopAllStreams();
-  const [dashboardRes, rekapRes] = await Promise.all([
-    apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
-    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
-  ]);
   
+  // Render skeleton dulu biar cepet muncul
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   fotoUser = fotoUser.replace(/\s/g, '');
   if (fotoUser.includes('uc?export=view&id=')) {
     const fileId = fotoUser.split('id=')[1].split('&')[0];
     fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-  if (fotoUser.includes('drive.google.com')) {
-    fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
-  
-  const jamMasuk = dashboardRes.jamMasuk || '00:00';
-  const jamPulang = dashboardRes.jamPulang || '00:00';
-  globalJamPulang = jamPulang;
-  const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
-  const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-  
-  let statusText = 'Belum Absen Masuk';
-  let statusColor = 'bg-red-500';
-  let statusIcon = 'ri-close-circle-line';
-  if (sudahPulang) {
-    statusText = `Sudah Pulang ${jamPulang}`;
-    statusColor = 'bg-blue-500';
-    statusIcon = 'ri-home-4-line';
-  } else if (sudahMasuk) {
-    statusText = `Sudah Masuk ${jamMasuk}`;
-    statusColor = 'bg-green-500';
-    statusIcon = 'ri-checkbox-circle-line';
-  }
-  
-  let totalHadir = 0;
-  let totalIzin = 0;
-  let totalAlpa = 0;
-  if (rekapRes.status === 'success' && rekapRes.statistik) {
-    totalHadir = rekapRes.statistik.hadir || 0;
-    totalAlpa = rekapRes.statistik.alpa || 0;
-    totalIzin = rekapRes.statistik.izin || 0;
   }
   
   const greeting = getGreeting();
@@ -434,16 +434,13 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
-    <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="${statusIcon} text-3xl"></i>
-          <div>
-            <p class="text-xs opacity-90">Status Hari Ini</p>
-            <p class="font-bold text-lg">${statusText}</p>
-          </div>
+    <div id="statusCard" class="bg-gray-300 text-white rounded-2xl p-4 shadow-lg mb-4 animate-pulse">
+      <div class="flex items-center gap-3">
+        <i class="ri-loader-4-line text-3xl animate-spin"></i>
+        <div>
+          <p class="text-xs opacity-90">Status Hari Ini</p>
+          <p class="font-bold text-lg">Loading...</p>
         </div>
-        <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
     </div>
     <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
@@ -475,15 +472,15 @@ async function renderHome() {
             <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
             <div class="grid grid-cols-3 gap-3 text-center mb-4">
               <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-green-600 dark:text-green-400">${totalHadir}</p>
+                <p id="statHadir" class="text-3xl font-bold text-green-600 dark:text-green-400">-</p>
                 <p class="text-xs opacity-90 mt-1">Hadir</p>
               </div>
               <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">${totalIzin}</p>
+                <p id="statIzin" class="text-3xl font-bold text-blue-600 dark:text-blue-400">-</p>
                 <p class="text-xs opacity-90 mt-1">Izin</p>
               </div>
               <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-red-600 dark:text-red-400">${totalAlpa}</p>
+                <p id="statAlpa" class="text-3xl font-bold text-red-600 dark:text-red-400">-</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
             </div>
@@ -529,9 +526,58 @@ async function renderHome() {
   </div>
   ${renderBottomNav('home')}
   `;
+  
   applyDarkMode();
   startLiveClock();
   initSwipeGesture();
+  
+  // Load data setelah UI muncul - gak blocking
+  Promise.all([
+    apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
+    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
+  ]).then(([dashboardRes, rekapRes]) => {
+    // Update status card
+    const jamMasuk = dashboardRes.jamMasuk || '00:00';
+    const jamPulang = dashboardRes.jamPulang || '00:00';
+    globalJamPulang = jamPulang;
+    const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
+    const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
+    
+    let statusText = 'Belum Absen Masuk';
+    let statusColor = 'bg-red-500';
+    let statusIcon = 'ri-close-circle-line';
+    if (sudahPulang) {
+      statusText = `Sudah Pulang ${jamPulang}`;
+      statusColor = 'bg-blue-500';
+      statusIcon = 'ri-home-4-line';
+    } else if (sudahMasuk) {
+      statusText = `Sudah Masuk ${jamMasuk}`;
+      statusColor = 'bg-green-500';
+      statusIcon = 'ri-checkbox-circle-line';
+    }
+    
+    const statusCard = document.getElementById('statusCard');
+    statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
+    statusCard.onclick = renderAbsen;
+    statusCard.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="${statusIcon} text-3xl"></i>
+          <div>
+            <p class="text-xs opacity-90">Status Hari Ini</p>
+            <p class="font-bold text-lg">${statusText}</p>
+          </div>
+        </div>
+        <i class="ri-arrow-right-s-line text-2xl"></i>
+      </div>`;
+    
+    // Update statistik
+    if (rekapRes.status === 'success' && rekapRes.statistik) {
+      document.getElementById('statHadir').innerText = rekapRes.statistik.hadir || 0;
+      document.getElementById('statIzin').innerText = rekapRes.statistik.izin || 0;
+      document.getElementById('statAlpa').innerText = rekapRes.statistik.alpa || 0;
+    }
+  });
 }
 // --- AKHIR BAGIAN 2 ---
 function renderAccount() {
