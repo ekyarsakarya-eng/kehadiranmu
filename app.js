@@ -14,12 +14,6 @@ let currentCard = 0;
 let startX = 0;
 let currentX = 0;
 let isDragging = false;
-let globalJamPulang = '-';
-let patroliFoto = null;
-let kejadianFoto = null;
-let urgensiKejadian = 'Rendah';
-let daftarPos = [];
-let posDipilih = null;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -100,7 +94,7 @@ function getGreeting() {
 
 function renderBottomNav(active) {
   return `
-  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
+  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl z-40">
     <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
       <i class="ri-home-5-fill text-2xl"></i>
       <p class="font-semibold">Home</p>
@@ -167,53 +161,6 @@ function logout() {
   renderLogin();
 }
 
-function cekStatusShift(dashboardRes) {
-  const jamPulang = dashboardRes.jamPulang || '-';
-  if (jamPulang === '-' || jamPulang === '00:00') return { bisaMasuk: true, info: '' };
-  const now = new Date();
-  const [jamP, menitP, detikP = 0] = jamPulang.split(':');
-  const waktuPulang = new Date();
-  waktuPulang.setHours(parseInt(jamP), parseInt(menitP), parseInt(detikP));
-  if (waktuPulang > now) waktuPulang.setDate(waktuPulang.getDate() - 1);
-  const bisaMasukLagi = new Date(waktuPulang.getTime() + 12 * 60 * 60 * 1000);
-  const selisihMs = bisaMasukLagi - now;
-  if (selisihMs <= 0) return { bisaMasuk: true, info: 'Siap untuk shift berikutnya!' };
-  const sisaJam = Math.floor(selisihMs / 3600000);
-  const sisaMenit = Math.floor((selisihMs % 3600000) / 60000);
-  const jamBuka = bisaMasukLagi.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  return { bisaMasuk: false, info: `Shift berikutnya: ${jamBuka}`, countdown: `${sisaJam}j ${sisaMenit}m`, jamPulang: jamPulang };
-}
-
-function initSwipeGesture() {
-  const wrapper = document.getElementById('swipeWrapper');
-  if (!wrapper) return;
-  wrapper.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    isDragging = true;
-  }, { passive: true });
-  wrapper.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    currentX = e.touches[0].clientX;
-  }, { passive: true });
-  wrapper.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    const diff = startX - currentX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0 && currentCard === 0) swipeCard(1);
-      else if (diff < 0 && currentCard === 1) swipeCard(0);
-    }
-  }, { passive: true });
-}
-
-function swipeCard(idx) {
-  currentCard = idx;
-  const container = document.getElementById('swipeContainer');
-  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
-  document.getElementById('dot-0').className = idx === 0? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
-  document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
-}
-
 function startLiveClock() {
   if (liveClockInterval) clearInterval(liveClockInterval);
   function update() {
@@ -231,22 +178,22 @@ function startLiveClock() {
 
 async function renderHome() {
   stopAllStreams();
+  showLoading(true);
   const [dashboardRes, rekapRes] = await Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
     apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
   ]);
+  showLoading(false);
+  
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   fotoUser = fotoUser.replace(/\s/g, '');
   if (fotoUser.includes('uc?export=view&id=')) {
     const fileId = fotoUser.split('id=')[1].split('&')[0];
     fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
   }
-  if (fotoUser.includes('drive.google.com')) {
-    fotoUser += (fotoUser.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
+  
   const jamMasuk = dashboardRes.jamMasuk || '00:00';
   const jamPulang = dashboardRes.jamPulang || '00:00';
-  globalJamPulang = jamPulang;
   const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
   const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
   let statusText = 'Belum Absen Masuk';
@@ -261,9 +208,8 @@ async function renderHome() {
     statusColor = 'bg-green-500';
     statusIcon = 'ri-checkbox-circle-line';
   }
-  let totalHadir = 0;
-  let totalIzin = 0;
-  let totalAlpa = 0;
+  
+  let totalHadir = 0, totalIzin = 0, totalAlpa = 0;
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     totalHadir = rekapRes.statistik.hadir || 0;
     totalAlpa = rekapRes.statistik.alpa || 0;
@@ -273,6 +219,7 @@ async function renderHome() {
   const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
 
   app.innerHTML = `
+  <!-- Header -->
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
       <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
@@ -284,6 +231,9 @@ async function renderHome() {
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
     </div>
+  </div>
+  
+  <!-- Content -->
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="mb-4">
       <div class="flex items-center justify-between mb-1">
@@ -298,7 +248,9 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
-    <div onclick="renderAbsen()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
+    
+    <!-- Status Card -->
+    <div onclick="renderAbsenPage()" class="${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <i class="${statusIcon} text-3xl"></i>
@@ -310,56 +262,49 @@ async function renderHome() {
         <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>
     </div>
-    <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
-      <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
-        <div class="w-full flex-shrink-0">
-          <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl">
-            <div class="flex items-center gap-3 mb-4">
-              <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg flex-shrink-0">
-              <div class="min-w-0">
-                <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
-                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
-              </div>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
-                <i class="ri-login-circle-line text-3xl mb-1"></i>
-                <p class="font-bold text-sm">Absen Masuk</p>
-              </button>
-              <button onclick="quickAbsen('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
-                <i class="ri-logout-circle-line text-3xl mb-1"></i>
-                <p class="font-bold text-sm">Absen Pulang</p>
-              </button>
-            </div>
-            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
-          </div>
-        </div>
-        <div class="w-full flex-shrink-0">
-          <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl p-5 shadow-xl">
-            <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
-            <div class="grid grid-cols-3 gap-3 text-center mb-4">
-              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-green-600 dark:text-green-400">${totalHadir}</p>
-                <p class="text-xs opacity-90 mt-1">Hadir</p>
-              </div>
-              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">${totalIzin}</p>
-                <p class="text-xs opacity-90 mt-1">Izin</p>
-              </div>
-              <div class="bg-white dark:bg-gray-600 rounded-xl p-3 shadow">
-                <p class="text-3xl font-bold text-red-600 dark:text-red-400">${totalAlpa}</p>
-                <p class="text-xs opacity-90 mt-1">Alpha</p>
-              </div>
-            </div>
-            <button onclick="renderRekap()" class="w-full bg-[#800000] text-white py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
-          </div>
+    
+    <!-- Main Card -->
+    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-4">
+        <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg flex-shrink-0">
+        <div class="min-w-0">
+          <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
+          <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
         </div>
       </div>
-      <div class="flex justify-center gap-2 mt-3">
-        <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
-        <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <button onclick="renderAbsenPage('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
+          <i class="ri-login-circle-line text-3xl mb-1"></i>
+          <p class="font-bold text-sm">Absen Masuk</p>
+        </button>
+        <button onclick="renderAbsenPage('OUT')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
+          <i class="ri-logout-circle-line text-3xl mb-1"></i>
+          <p class="font-bold text-sm">Absen Pulang</p>
+        </button>
       </div>
-      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
+      <button onclick="renderAbsenPage()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Halaman Absen</button>
     </div>
+    
+    <!-- Statistik -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-lg mb-4">
+      <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Statistik Bulan Ini</p>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="bg-green-50 dark:bg-green-900/30 rounded-xl p-3">
+          <p class="text-3xl font-bold text-green-600 dark:text-green-400">${totalHadir}</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Hadir</p>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3">
+          <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">${totalIzin}</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Izin</p>
+        </div>
+        <div class="bg-red-50 dark:bg-red-900/30 rounded-xl p-3">
+          <p class="text-3xl font-bold text-red-600 dark:text-red-400">${totalAlpa}</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Alpha</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Menu -->
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
@@ -394,74 +339,117 @@ async function renderHome() {
   `;
   applyDarkMode();
   startLiveClock();
-  initSwipeGesture();
 }
 
-async function quickAbsen(tipe) {
-  absenTipe = tipe;
-  await absenProses();
+// --- HALAMAN ABSEN BARU ---
+async function renderAbsenPage(tipeDefault = 'IN') {
+  stopAllStreams();
+  absenTipe = tipeDefault;
+  absenFoto = null;
+  currentLokasi = null;
+  
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Absen</h1>
+  </div>
+  
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+      <p id="alamatAbsen" class="text-sm text-gray-600 dark:text-gray-300 mb-4 min-h-">
+        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
+      </p>
+      
+      <div class="text-center mb-6">
+        <p id="jamAbsen" class="text-6xl font-extrabold text-gray-900 dark:text-white font-header">--:--</p>
+        <p id="tglAbsen" class="text-sm text-gray-500 dark:text-gray-400 mt-1">--</p>
+      </div>
+      
+      <!-- Foto Selfie -->
+      <div class="mb-6">
+        <div id="fotoContainer" onclick="bukaKameraAbsen()" class="w-48 h-48 mx-auto bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center cursor-pointer active:scale-95 transition relative overflow-hidden">
+          <img id="previewAbsenFoto" class="w-full h-full object-cover hidden" />
+          <div id="placeholderKamera" class="text-center">
+            <i class="ri-camera-add-line text-5xl text-gray-400 dark:text-gray-500"></i>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 font-semibold">Tap untuk foto selfie</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Toggle IN/OUT -->
+      <div class="flex bg-gray-200 dark:bg-gray-700 rounded-xl p-1 mb-4">
+        <button onclick="setAbsenTipe('IN')" id="btnIn" class="flex-1 py-3 rounded-lg font-bold text-sm transition ${absenTipe==='IN'?'toggle-active':'text-gray-600 dark:text-gray-300'}">
+          IN
+        </button>
+        <button onclick="setAbsenTipe('OUT')" id="btnOut" class="flex-1 py-3 rounded-lg font-bold text-sm transition ${absenTipe==='OUT'?'toggle-active':'text-gray-600 dark:text-gray-300'}">
+          OUT
+        </button>
+      </div>
+      
+      <!-- Submit -->
+      <button onclick="submitAbsen()" id="btnSubmitAbsen" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        Submit
+      </button>
+    </div>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+  updateJamAbsen();
+  setInterval(updateJamAbsen, 1000);
+  getLokasiAbsen();
 }
 
-async function absenProses() {
-  try {
-    if (!currentUser ||!currentUser.Nama) {
-      showToast('Login dulu', 'error');
-      return;
-    }
+function updateJamAbsen() {
+  const now = new Date();
+  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const tgl = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const jamEl = document.getElementById('jamAbsen');
+  const tglEl = document.getElementById('tglAbsen');
+  if (jamEl) jamEl.innerText = jam;
+  if (tglEl) tglEl.innerText = tgl;
+}
 
-    showToast('Buka kamera...', 'info');
-    const foto = await takePhoto();
-    if (!foto) {
-      showToast('Foto wajib. Absen dibatalkan', 'error');
-      return;
-    }
-
-    showToast('Mendeteksi lokasi...', 'info');
-    const lokasi = await getLocation();
-    if (!lokasi.lat ||!lokasi.lon) {
-      showToast('GPS wajib aktif. Nyalain lokasi HP', 'error');
-      return;
-    }
-
-    showLoading(true);
-    const res = await apiCall('absen', {
-      tipe: absenTipe,
-      nama: currentUser.Nama,
-      foto: foto,
-      latitude: lokasi.lat,
-      longitude: lokasi.lon,
-      lokasi: lokasi.alamat || 'Lokasi tidak terdeteksi'
-    });
-    showLoading(false);
-
-    if (res.status === 'success') {
-      showToast(res.msg, 'success');
-      stopCamera();
-      renderHome();
-    } else {
-      showToast(res.msg, 'error');
-    }
-
-  } catch (e) {
-    showLoading(false);
-    stopCamera();
-    showToast('Gagal absen: ' + e.message, 'error');
+async function getLokasiAbsen() {
+  if (!navigator.geolocation) {
+    document.getElementById('alamatAbsen').innerHTML = '<i class="ri-error-warning-line text-red-500"></i> GPS tidak didukung';
+    return;
   }
+  
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      currentLokasi = {
+        lat: pos.coords.latitude.toFixed(6),
+        lon: pos.coords.longitude.toFixed(6)
+      };
+      // Simulasi reverse geocoding - di production pake API
+      document.getElementById('alamatAbsen').innerHTML = `<i class="ri-map-pin-line text-green-500"></i> ${currentLokasi.lat}, ${currentLokasi.lon}`;
+    },
+    (err) => {
+      document.getElementById('alamatAbsen').innerHTML = '<i class="ri-error-warning-line text-red-500"></i> Gagal deteksi lokasi. Aktifkan GPS';
+      showToast('GPS wajib aktif', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
-async function takePhoto() {
-  return new Promise(async (resolve) => {
-    const modal = document.getElementById('modalKamera');
-    const video = document.getElementById('video');
-    modal.classList.remove('hidden');
+function setAbsenTipe(tipe) {
+  absenTipe = tipe;
+  document.getElementById('btnIn').className = `flex-1 py-3 rounded-lg font-bold text-sm transition ${tipe==='IN'?'toggle-active':'text-gray-600 dark:text-gray-300'}`;
+  document.getElementById('btnOut').className = `flex-1 py-3 rounded-lg font-bold text-sm transition ${tipe==='OUT'?'toggle-active':'text-gray-600 dark:text-gray-300'}`;
+  cekSubmitReady();
+}
 
-    try {
-      absenStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
-      video.srcObject = absenStream;
-
+function bukaKameraAbsen() {
+  const modal = document.getElementById('modalKamera');
+  const video = document.getElementById('video');
+  modal.classList.remove('hidden');
+  
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+   .then(stream => {
+      absenStream = stream;
+      video.srcObject = stream;
+      
       document.getElementById('btnCapture').onclick = () => {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
@@ -470,22 +458,56 @@ async function takePhoto() {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0);
-        const fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        absenFoto = canvas.toDataURL('image/jpeg', 0.8);
+        
+        document.getElementById('previewAbsenFoto').src = absenFoto;
+        document.getElementById('previewAbsenFoto').classList.remove('hidden');
+        document.getElementById('placeholderKamera').classList.add('hidden');
         stopCamera();
-        resolve(fotoBase64);
+        cekSubmitReady();
+        showToast('Foto berhasil!', 'success');
       };
-
-      document.getElementById('btnCloseKamera').onclick = () => {
-        stopCamera();
-        resolve(null);
-      };
-
-    } catch (e) {
-      showToast('Izin kamera ditolak. Aktifkan di setting browser', 'error');
+      
+      document.getElementById('btnCloseKamera').onclick = () => stopCamera();
+    })
+   .catch(err => {
+      showToast('Kamera error: ' + err.message, 'error');
       stopCamera();
-      resolve(null);
-    }
+    });
+}
+
+function cekSubmitReady() {
+  const btn = document.getElementById('btnSubmitAbsen');
+  if (absenFoto && currentLokasi) {
+    btn.disabled = false;
+  } else {
+    btn.disabled = true;
+  }
+}
+
+async function submitAbsen() {
+  if (!absenFoto ||!currentLokasi) {
+    showToast('Foto & lokasi wajib', 'error');
+    return;
+  }
+  
+  showLoading(true);
+  const res = await apiCall('absen', {
+    tipe: absenTipe,
+    nama: currentUser.Nama,
+    foto: absenFoto,
+    latitude: currentLokasi.lat,
+    longitude: currentLokasi.lon,
+    lokasi: `${currentLokasi.lat}, ${currentLokasi.lon}`
   });
+  showLoading(false);
+  
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    setTimeout(() => renderHome(), 1000);
+  } else {
+    showToast(res.msg, 'error');
+  }
 }
 
 function stopCamera() {
@@ -496,36 +518,7 @@ function stopCamera() {
   document.getElementById('modalKamera').classList.add('hidden');
 }
 
-async function getLocation() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      resolve({ lat: null, lon: null, alamat: 'GPS tidak support' });
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({
-          lat: pos.coords.latitude.toFixed(6),
-          lon: pos.coords.longitude.toFixed(6),
-          alamat: 'Lokasi terdeteksi'
-        });
-      },
-      (err) => {
-        console.error(err);
-        showToast('Gagal ambil lokasi. Aktifkan GPS', 'error');
-        resolve({ lat: null, lon: null, alamat: 'Gagal ambil lokasi' });
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  });
-}
-
-function renderAbsen() {
-  absenTipe = 'IN';
-  absenProses();
-}
-
+// --- ACCOUNT ---
 function renderAccount() {
   stopAllStreams();
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
@@ -557,6 +550,7 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
+  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
@@ -597,7 +591,7 @@ async function saveAccount() {
   }
 }
 
-// --- PATROLI FULL ---
+// --- PATROLI ---
 async function renderPatroli() {
   stopAllStreams();
   patroliFoto = null;
@@ -748,78 +742,6 @@ async function submitPatroli() {
   } else {
     btn.disabled = false;
     btn.innerText = 'Submit Check-in Pos';
-    showToast(res.msg, 'error');
-  }
-}
-
-// --- IZIN ---
-async function renderIzin() {
-  stopAllStreams();
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Pengajuan Izin</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-2xl p-5 shadow-xl mb-4">
-      <div class="flex items-center gap-3">
-        <i class="ri-mail-send-line text-4xl"></i>
-        <div>
-          <p class="font-bold text-lg">Form Izin</p>
-          <p class="text-xs opacity-80">Sakit, Cuti, atau Izin Lainnya</p>
-        </div>
-      </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Izin</label>
-        <select id="jenisIzin" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-purple-500 focus:outline-none">
-          <option value="Sakit">Sakit</option>
-          <option value="Cuti">Cuti</option>
-          <option value="Izin">Izin Lainnya</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tanggal Izin</label>
-        <input id="tglIzin" type="date" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-purple-500 focus:outline-none">
-      </div>
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Alasan</label>
-        <textarea id="alasanIzin" placeholder="Tulis alasan izin..." class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-purple-500 focus:outline-none" rows="4"></textarea>
-      </div>
-      <button onclick="kirimIzin()" class="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
-        <i class="ri-send-plane-fill"></i> Kirim Pengajuan
-      </button>
-    </div>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-  applyDarkMode();
-  document.getElementById('tglIzin').valueAsDate = new Date();
-}
-
-async function kirimIzin() {
-  const jenis = document.getElementById('jenisIzin').value;
-  const tgl = document.getElementById('tglIzin').value;
-  const alasan = document.getElementById('alasanIzin').value.trim();
-  
-  if (!tgl || !alasan) {
-    showToast('Tanggal & alasan wajib diisi', 'error');
-    return;
-  }
-  
-  showLoading(true);
-  const res = await apiCall('ajukan_izin', {
-    nama: currentUser.Nama.trim(),
-    jenis: jenis,
-    tanggal: tgl,
-    alasan: alasan
-  });
-  showLoading(false);
-  
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 1000);
-  } else {
     showToast(res.msg, 'error');
   }
 }
@@ -1036,6 +958,7 @@ async function renderRekap() {
               <p class="text-gray-500 dark:text-gray-400 text-xs">Durasi</p>
               <p class="font-semibold text-[#800000]">${r.Durasi || '-'}</p>
             </div>
+          </div>
           ${r.Lokasi? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-2"><i class="ri-map-pin-line"></i> ${r.Lokasi}</p>` : ''}
         </div>
       `).join('')}
@@ -1057,11 +980,11 @@ function showSplashScreen() {
     <div class="relative w-64 h-64">
       <svg viewBox="0 0 200 200" class="w-full h-full">
         <style>
-       .satpam { animation: lari 1.2s ease-in-out, hormat 0.8s ease-in-out 1.2s forwards; }
-       .kaki1 { animation: langkah 0.25s infinite; transform-origin: 95px 140px; }
-       .kaki2 { animation: langkah 0.25s infinite 0.125s; transform-origin: 105px 140px; }
-       .tangan { animation: hormat-tangan 0.8s ease-in-out 1.2s forwards; transform-origin: 110px 100px; }
-       .bg-gerak { animation: bg-slide 1.2s linear; }
+      .satpam { animation: lari 1.2s ease-in-out, hormat 0.8s ease-in-out 1.2s forwards; }
+      .kaki1 { animation: langkah 0.25s infinite; transform-origin: 95px 140px; }
+      .kaki2 { animation: langkah 0.25s infinite 0.125s; transform-origin: 105px 140px; }
+      .tangan { animation: hormat-tangan 0.8s ease-in-out 1.2s forwards; transform-origin: 110px 100px; }
+      .bg-gerak { animation: bg-slide 1.2s linear; }
           @keyframes lari { 0% { transform: translateX(-150px); } 100% { transform: translateX(0); } }
           @keyframes langkah { 0%,100% { transform: rotate(-25deg); } 50% { transform: rotate(25deg); } }
           @keyframes hormat { 0% { transform: translateX(0); } 100% { transform: translateX(0) scale(1.15); } }
