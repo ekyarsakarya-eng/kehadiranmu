@@ -45,6 +45,44 @@ function applyDarkMode() {
   }
 }
 
+async function absen(tipe) {
+  try {
+    showLoading(true);
+    
+    const foto = await takePhoto();
+    const lokasi = await getLocation();
+    
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'absen',
+        tipe: tipe, // 'IN' atau 'OUT'
+        nama: currentUser.Nama,
+        foto: foto,
+        latitude: lokasi.lat,
+        longitude: lokasi.lon,
+        lokasi: lokasi.alamat
+      })
+    });
+    
+    const data = await res.json(); // <- INI YANG SERING LUPA
+    
+    showLoading(false);
+    
+    if (data.status === 'success') {
+      showToast(data.msg, 'success');
+      updateStatusAbsen(); // refresh tampilan
+    } else {
+      showToast(data.msg, 'error');
+    }
+    
+  } catch (e) {
+    showLoading(false);
+    showToast('Gagal absen: ' + e.message, 'error');
+    console.error(e); // <- Cek ini di Console browser
+  }
+}
+
 function toggleDarkMode() {
   isDarkMode =!isDarkMode;
   localStorage.setItem('darkMode', isDarkMode);
