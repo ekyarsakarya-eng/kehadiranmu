@@ -629,9 +629,611 @@ async function loadRekapBulan() {
       </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
       <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
-        <div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
+        <div>M</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
+      </div>
+      <div class="grid grid-cols-7 gap-2">`;
+
+  for(let i=0; i<firstDay; i++){
+    html += `<div></div>`;
+  }
+
+  for(let day=1; day<=daysInMonth; day++){
+    const r = dataMap[day];
+    let bg = 'bg-gray-100 dark:bg-gray-700';
+    let text = 'text-gray-400';
+    let status = 'alpa';
+    let idx = -1;
+
+    if(r){
+      idx = r._idx;
+      if(r.Status === 'Hadir'){
+        bg = 'bg-green-500';
+        status = 'hadir';
+        text = 'text-white';
+      } else if(r.Status === 'Terlambat'){
+        bg = 'bg-orange-500';
+        status = 'terlambat';
+        text = 'text-white';
+      } else if(r.Status === 'Izin'){
+        bg = 'bg-blue-500';
+        status = 'izin';
+        text = 'text-white';
+      } else {
+        bg = 'bg-red-500';
+        text = 'text-white';
+      }
+    }
+
+    const today = new Date();
+    const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
+    const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
+
+    html += `
+      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})"
+              class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
+        ${day}
+      </button>`;
+  }
+
+  html += `
+      </div>
+      <div class="flex justify-center gap-3 mt-4 text-xs flex-wrap">
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div>Hadir</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Telat</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-500 rounded"></div>Izin</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-500 rounded"></div>Alpa</div>
+      </div>
+    </div>
+
+    <div id="detailTanggal" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 hidden">
+      <p class="text-center text-gray-400 text-sm">Klik tanggal untuk lihat detail</p>
+    </div>
+  `;
+
+  content.innerHTML = html;
+}
+
+function showDetailTanggal(day, status, idx) {
+  const el = document.getElementById('detailTanggal');
+  const r = idx >= 0? window.rekapDataBulanIni.find(d => d._idx === idx) : null;
+
+  if (!r || status === 'alpa') {
+    el.innerHTML = `
+      <div class="text-center py-4">
+        <i class="ri-close-circle-line text-4xl text-red-500 mb-2"></i>
+        <p class="font-bold text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-sm text-red-500">Tidak Ada Data Absensi</p>
+      </div>`;
+    el.classList.remove('hidden');
+    return;
+  }
+
+  const masuk = r['Jam Masuk'] || '-';
+  const pulang = r['Jam Pulang'] || '-';
+  const durasi = r.Durasi || '-';
+  const lokasi = r.Lokasi || '-';
+  const lat = r.Latitude || '';
+  const lon = r.Longitude || '';
+  let warnaStatus = 'text-green-600';
+  let iconStatus = 'ri-checkbox-circle-line';
+  let labelStatus = 'Hadir Tepat Waktu';
+
+  if(status === 'terlambat') {
+    warnaStatus = 'text-orange-600';
+    iconStatus = 'ri-time-line';
+    labelStatus = 'Terlambat';
+  } else if(status === 'izin') {
+    warnaStatus = 'text-blue-600';
+    iconStatus = 'ri-mail-line';
+    labelStatus = 'Izin';
+  }
+
+  el.innerHTML = `
+    <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+      <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
+      <div>
+        <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
+      </div>
+    <div class="grid grid-cols-3 gap-3 text-center mb-3">
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${masuk}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulang</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${pulang}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
+        <p class="font-bold text-sm text-[#800000]">${durasi}</p>
+      </div>
+    </div>
+    ${lokasi!== '-'? `
+    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div class="flex items-start gap-2">
+        <i class="ri-map-pin-line text-gray-500 dark:text-gray-400 mt-0.5"></i>
+        <div class="flex-1">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
+          <p class="text-sm text-gray-800 dark:text-white mb-2">${lokasi}</p>
+          ${lat && lon? `
+          <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')"
+                  class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-95 transition">
+            <i class="ri-map-2-line"></i> Buka Maps
+          </button>
+          ` : ''}
+        </div>
+      </div>
+    ` : ''}
+  `;
+  el.classList.remove('hidden');
+  el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function renderAccount() {
+  stopAllStreams();
+  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
+  foto = foto.replace(/\s/g, '');
+  if (foto.includes('uc?export=view&id=')) {
+    const fileId = foto.split('id=')[1].split('&')[0];
+    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  }
+  if (foto.includes('drive.google.com')) {
+    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
+  }
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
+      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
+           onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
+      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
+      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
+      <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
+      <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 bg-gray-100 dark:bg-gray-900" disabled></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Unit Kerja</label><input id="Unit_Kerja" value="${currentUser.Unit_Kerja || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
+      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
+      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
+    </div>
+  </div>
+  ${renderBottomNav('account')}
+  `;
+  applyDarkMode();
+}
+
+function previewFoto(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => document.getElementById('previewFoto').src = e.target.result;
+    reader.readAsDataURL(file);
+  }
+}
+
+async function saveAccount() {
+  const newUser = {...currentUser };
+  ['Nama', 'Jabatan', 'Unit_Kerja', 'Password'].forEach(f => {
+    const el = document.getElementById(f);
+    if (el && el.value) newUser[f] = el.value;
+  });
+  const fotoInput = document.getElementById('fotoInput');
+  const previewImg = document.getElementById('previewFoto');
+  if (fotoInput.files[0]) {
+    previewImg.style.opacity = '0.5';
+    newUser.Foto_Profil = previewImg.src;
+  }
+  const res = await apiCall('update_user', { user: newUser });
+  if (res.status === 'success') {
+    currentUser = res.data;
+    sessionStorage.setItem('user', JSON.stringify(currentUser));
+    showToast('Profil berhasil diupdate!', 'success');
+    setTimeout(() => {
+      renderHome();
+    }, 1000);
+  } else {
+    previewImg.style.opacity = '1';
+    showToast(res.msg, 'error');
+  }
+}
+
+async function renderPatroli() {
+  stopAllStreams();
+  patroliFoto = null;
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Patroli Satpam</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-green-600 to-green-800 text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-3">
+        <i class="ri-shield-check-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Checklist Patroli</p>
+          <p class="text-xs opacity-80">Pilih pos & upload bukti foto</p>
+        </div>
+      </div>
+      <div id="lokasiPatroli" class="text-sm mb-3 bg-white/20 backdrop-blur-sm rounded-lg p-2">
+        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">1. Pilih Pos Patroli</label>
+      <select id="selectPos" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-green-600 focus:outline-none mb-4">
+        <option value="">Loading pos...</option>
+      </select>
+
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">2. Ambil Foto Bukti</label>
+      <div class="relative w-full h-48 mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
+        <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+        <img id="previewPatroli" class="w-full h-full object-cover hidden" />
+        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+          <i class="ri-camera-line text-4xl"></i>
+          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
+        </button>
+        <button onclick="ambilFotoPatroli()" id="btnCapturePatroli" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
+          <i class="ri-camera-fill"></i> Ambil Foto
+        </button>
+      </div>
+
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">3. Keterangan (Opsional)</label>
+      <textarea id="ketPatroli" placeholder="Contoh: Kondisi aman, pintu terkunci" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-green-600 focus:outline-none mb-4" rows="2"></textarea>
+
+      <button onclick="submitPatroli()" id="btnSubmitPatroli" class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <i class="ri-check-line"></i> Submit Check-in Pos
+      </button>
+    </div>
+
+    <button onclick="renderLaporKejadian()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+      <i class="ri-alarm-warning-line text-xl"></i> Lapor Kejadian Darurat
+    </button>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+
+  const resPos = await apiCall('get_pos_patroli');
+  const selectPos = document.getElementById('selectPos');
+  if (resPos.status === 'success' && resPos.data.length > 0) {
+    selectPos.innerHTML = '<option value="">-- Pilih Pos --</option>';
+    resPos.data.forEach(pos => {
+      selectPos.innerHTML += `<option value="${pos.id}" data-lat="${pos.lat}" data-lon="${pos.lon}">${pos.nama}</option>`;
+    });
+  } else {
+    selectPos.innerHTML = '<option value="">Tidak ada pos aktif</option>';
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  }, () => {
+    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-error-warning-line"></i> Gagal dapat lokasi`;
+    showToast('GPS tidak aktif', 'error');
+  });
+}
+
+async function startCameraPatroli() {
+  try {
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('cameraPatroli');
+    video.srcObject = absenStream;
+    video.classList.remove('hidden');
+    document.getElementById('btnBukaKamera').classList.add('hidden');
+    document.getElementById('btnCapturePatroli').classList.remove('hidden');
+  } catch (err) {
+    showToast('Kamera error: ' + err.message, 'error');
+  }
+}
+
+function ambilFotoPatroli() {
+  const video = document.getElementById('cameraPatroli');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  patroliFoto = canvas.toDataURL('image/jpeg', 0.8);
+  const preview = document.getElementById('previewPatroli');
+  preview.src = patroliFoto;
+  preview.classList.remove('hidden');
+  video.classList.add('hidden');
+  document.getElementById('btnCapturePatroli').classList.add('hidden');
+  document.getElementById('btnSubmitPatroli').disabled = false;
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  showToast('Foto berhasil diambil!', 'success');
+}
+
+async function submitPatroli() {
+  const selectPos = document.getElementById('selectPos');
+  const posId = selectPos.value;
+  const posNama = selectPos.options[selectPos.selectedIndex].text;
+  const ket = document.getElementById('ketPatroli').value;
+  const btn = document.getElementById('btnSubmitPatroli');
+
+  if (!posId) {
+    showToast('Pilih pos patroli dulu!', 'error');
+    return;
+  }
+  if (!patroliFoto) {
+    showToast('Ambil foto bukti dulu!', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Mengirim...';
+
+  let lat = null, lon = null;
+  await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      resolve();
+    }, () => resolve());
+  });
+
+  const res = await apiCall('submit_patroli', {
+    nama: currentUser.Nama.trim(),
+    pos: posNama,
+    foto: patroliFoto,
+    latitude: lat,
+    longitude: lon,
+    keterangan: ket
+  });
+
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    setTimeout(() => renderPatroli(), 1000);
+  } else {
+    btn.disabled = false;
+    btn.innerText = 'Submit Check-in Pos';
+    showToast(res.msg, 'error');
+  }
+}
+
+async function renderLaporKejadian() {
+  stopAllStreams();
+  kejadianFoto = null;
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderPatroli()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Lapor Kejadian</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-2">
+        <i class="ri-alarm-warning-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Laporan Darurat</p>
+          <p class="text-xs opacity-80">Laporkan kejadian mencurigakan</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Kejadian</label>
+        <select id="jenisKejadian" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-orange-500 focus:outline-none">
+          <option value="">-- Pilih Jenis --</option>
+          <option value="Tamu Mencurigakan">Tamu Mencurigakan</option>
+          <option value="Kerusakan Fasilitas">Kerusakan Fasilitas</option>
+          <option value="Kebakaran">Kebakaran</option>
+          <option value="Pencurian">Pencurian</option>
+          <option value="Keributan">Keributan</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tingkat Urgensi</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setUrgensi('Rendah')" id="urgensiRendah" class="p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition">Rendah</button>
+          <button onclick="setUrgensi('Sedang')" id="urgensiSedang" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Sedang</button>
+          <button onclick="setUrgensi('Tinggi')" id="urgensiTinggi" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Tinggi</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Deskripsi Kejadian</label>
+        <textarea id="deskripsiKejadian" placeholder="Jelaskan kronologi kejadian..." class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-orange-500 focus:outline-none" rows="4"></textarea>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Bukti</label>
+        <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
+          <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+          <img id="previewKejadian" class="w-full h-full object-cover hidden" />
+          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+            <i class="ri-camera-line text-4xl"></i>
+            <p class="text-sm font-semibold">Tap untuk buka kamera</p>
+          </button>
+          <button onclick="ambilFotoKejadian()" id="btnCaptureKejadian" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
+            <i class="ri-camera-fill"></i> Ambil Foto
+          </button>
+        </div>
+      </div>
+
+      <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
+        <i class="ri-send-plane-fill"></i> Kirim Laporan
+      </button>
+    </div>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+  window.urgensiKejadian = 'Rendah';
+}
+
+function setUrgensi(level) {
+  urgensiKejadian = level;
+  document.getElementById('urgensiRendah').className = level === 'Rendah'?
+    'p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+  document.getElementById('urgensiSedang').className = level === 'Sedang'?
+    'p-3 rounded-lg border-2 border-yellow-500 bg-yellow-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+  document.getElementById('urgensiTinggi').className = level === 'Tinggi'?
+    'p-3 rounded-lg border-2 border-red-500 bg-red-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+}
+
+async function startCameraKejadian() {
+  try {
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('cameraKejadian');
+    video.srcObject = absenStream;
+    video.classList.remove('hidden');
+    document.getElementById('btnBukaKameraKejadian').classList.add('hidden');
+    document.getElementById('btnCaptureKejadian').classList.remove('hidden');
+  } catch (err) {
+    showToast('Kamera error: ' + err.message, 'error');
+  }
+}
+
+function ambilFotoKejadian() {
+  const video = document.getElementById('cameraKejadian');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  kejadianFoto = canvas.toDataURL('image/jpeg', 0.8);
+  const preview = document.getElementById('previewKejadian');
+  preview.src = kejadianFoto;
+  preview.classList.remove('hidden');
+  video.classList.add('hidden');
+  document.getElementById('btnCaptureKejadian').classList.add('hidden');
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  showToast('Foto berhasil diambil!', 'success');
+}
+
+async function submitKejadian() {
+  const jenis = document.getElementById('jenisKejadian').value;
+  const deskripsi = document.getElementById('deskripsiKejadian').value;
+  const btn = document.getElementById('btnSubmitKejadian');
+
+  if (!jenis) {
+    showToast('Pilih jenis kejadian dulu!', 'error');
+    return;
+  }
+  if (!deskripsi) {
+    showToast('Isi deskripsi kejadian!', 'error');
+    return;
+  }
+  if (!kejadianFoto) {
+    showToast('Ambil foto bukti dulu!', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
+
+  let lat = null, lon = null;
+  await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      resolve();
+    }, () => resolve());
+  });
+
+  const res = await apiCall('lapor_kejadian', {
+    nama: currentUser.Nama.trim(),
+    jenis: jenis,
+    deskripsi: deskripsi,
+    urgensi: urgensiKejadian,
+    foto: kejadianFoto,
+    latitude: lat,
+    longitude: lon
+  });
+
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    setTimeout(() => renderPatroli(), 1000);
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Kirim Laporan';
+    showToast(res.msg, 'error');
+  }
+}
+
+async function renderDarurat() {
+  stopAllStreams();
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Kontak Darurat</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-red-500 to-red-700 text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3">
+        <i class="ri-alarm-warning-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Hubungi Anggota</p>
+          <p class="text-xs opacity-80">Telpon atau WA langsung</p>
+        </div>
+      </div>
+    </div>
+    <div id="listDarurat" class="space-y-3">
+      <div class="text-center py-8 text-gray-400">
+        <i class="ri-loader-4-line animate-spin text-3xl"></i>
+        <p class="text-sm mt-2">Memuat kontak...</p>
+      </div>
+    </div>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+  
+  const res = await apiCall('get_kontak_darurat', { unit: currentUser.Unit_Kerja });
+  const listEl = document.getElementById('listDarurat');
+  
+  if (res.status === 'success' && res.data.length > 0) {
+    listEl.innerHTML = res.data.map(k => `
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="font-bold text-gray-900 dark:text-white">${k.nama}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">${k.jabatan} | ${k.unit}</p>
+          </div>
+          <div class="text-xs font-bold text-gray-500 dark:text-gray-400">${k.no_hp}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <a href="tel:${k.no_hp}" class="bg-blue-500 text-white p-3 rounded-lg font-bold text-center active:scale-95 transition">
+            <i class="ri-phone-fill"></i> Telpon
+          </a>
+          <a href="https://wa.me/62${k.no_hp.startsWith('0')? k.no_hp.slice(1) : k.no_hp}" target="_blank" class="bg-green-500 text-white p-3 rounded-lg font-bold text-center active:scale-95 transition">
+            <i class="ri-whatsapp-fill"></i> WhatsApp
+          </a>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Tidak ada kontak darurat</p>`;
+  }
+}
+
+function comingSoon() {
+  showToast('Fitur ini segera hadir!', 'warning');
+}
+
+// --- INIT ---
+(function init() {
+  applyDarkMode();
+  currentUser? renderHome() : renderLogin();
+})();
       </div>
       <div class="grid grid-cols-7 gap-2">`;
 
