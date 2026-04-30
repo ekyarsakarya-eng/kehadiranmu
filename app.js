@@ -221,6 +221,7 @@ async function renderHome() {
   }
   const greeting = getGreeting();
   const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
+
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50">
     <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -229,7 +230,6 @@ async function renderHome() {
         <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
       </div>
     </div>
-   </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
@@ -257,6 +257,7 @@ async function renderHome() {
           <p class="font-bold text-lg">Loading...</p>
         </div>
       </div>
+    </div>
     <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
@@ -296,11 +297,11 @@ async function renderHome() {
                 <p id="statAlpa" class="text-3xl font-bold text-red-600 dark:text-red-400">-</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
-           </div>
+            </div>
             <button onclick="renderRekap()" class="w-full bg-[#800000] text-white py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
           </div>
         </div>
-      </div> <!-- TAMBAH INI: nutup swipeContainer -->
+      </div>
       <div class="flex justify-center gap-2 mt-3">
         <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
         <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
@@ -342,47 +343,59 @@ async function renderHome() {
   applyDarkMode();
   startLiveClock();
   initSwipeGesture();
-  Promise.all([
-    apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
-    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
-  ]).then(([dashboardRes, rekapRes]) => {
-    const jamMasuk = dashboardRes.jamMasuk || '00:00';
-    const jamPulang = dashboardRes.jamPulang || '00:00';
-    globalJamPulang = jamPulang;
-    const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
-    const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-    let statusText = 'Belum Absen Masuk';
-    let statusColor = 'bg-red-500';
-    let statusIcon = 'ri-close-circle-line';
-    if (sudahPulang) {
-      statusText = `Sudah Pulang ${jamPulang}`;
-      statusColor = 'bg-blue-500';
-      statusIcon = 'ri-home-4-line';
-    } else if (sudahMasuk) {
-      statusText = `Sudah Masuk ${jamMasuk}`;
-      statusColor = 'bg-green-500';
-      statusIcon = 'ri-checkbox-circle-line';
-    }
+
+  try {
+    const [dashboardRes, rekapRes] = await Promise.all([
+      apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
+      apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
+    ]);
+
     const statusCard = document.getElementById('statusCard');
-    statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
-    statusCard.onclick = renderAbsen;
-    statusCard.innerHTML = `
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="${statusIcon} text-3xl"></i>
-          <div>
-            <p class="text-xs opacity-90">Status Hari Ini</p>
-            <p class="font-bold text-lg">${statusText}</p>
+    if (statusCard && dashboardRes.status === 'success') {
+      const jamMasuk = dashboardRes.jamMasuk || '00:00';
+      const jamPulang = dashboardRes.jamPulang || '00:00';
+      globalJamPulang = jamPulang;
+      const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
+      const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
+      let statusText = 'Belum Absen Masuk';
+      let statusColor = 'bg-red-500';
+      let statusIcon = 'ri-close-circle-line';
+      if (sudahPulang) {
+        statusText = `Sudah Pulang ${jamPulang}`;
+        statusColor = 'bg-blue-500';
+        statusIcon = 'ri-home-4-line';
+      } else if (sudahMasuk) {
+        statusText = `Sudah Masuk ${jamMasuk}`;
+        statusColor = 'bg-green-500';
+        statusIcon = 'ri-checkbox-circle-line';
+      }
+      statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
+      statusCard.onclick = renderAbsen;
+      statusCard.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i class="${statusIcon} text-3xl"></i>
+            <div>
+              <p class="text-xs opacity-90">Status Hari Ini</p>
+              <p class="font-bold text-lg">${statusText}</p>
+            </div>
           </div>
-        </div>
-        <i class="ri-arrow-right-s-line text-2xl"></i>
-      </div>`;
-    if (rekapRes.status === 'success' && rekapRes.statistik) {
-      document.getElementById('statHadir').innerText = rekapRes.statistik.hadir || 0;
-      document.getElementById('statIzin').innerText = rekapRes.statistik.izin || 0;
-      document.getElementById('statAlpa').innerText = rekapRes.statistik.alpa || 0;
+          <i class="ri-arrow-right-s-line text-2xl"></i>
+        </div>`;
     }
-  });
+
+    if (rekapRes.status === 'success' && rekapRes.statistik) {
+      const elHadir = document.getElementById('statHadir');
+      const elIzin = document.getElementById('statIzin');
+      const elAlpa = document.getElementById('statAlpa');
+      if (elHadir) elHadir.innerText = rekapRes.statistik.hadir || 0;
+      if (elIzin) elIzin.innerText = rekapRes.statistik.izin || 0;
+      if (elAlpa) elAlpa.innerText = rekapRes.statistik.alpa || 0;
+    }
+  } catch (e) {
+    console.log('Error load data:', e);
+    showToast('Gagal load data dashboard', 'error');
+  }
 }
 // === AKHIR BAGIAN 2 ===
 // === BAGIAN 3: ABSEN & PATROLI ===
