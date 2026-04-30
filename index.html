@@ -1,35 +1,31 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#800000">
-  <link rel="apple-touch-icon" href="logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Absensi Satpam Terpadu</title>
+  <title>Absensi Kehadiran Terpadu</title>
+  
+  <!-- PWA WAJIB - TARUH DI SINI -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#800000">
+  
+  <!-- PWA iOS support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Absensi">
+  <link rel="apple-touch-icon" href="logo.png">
+  
+  <!-- CSS & Font kamu -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            'header': ['Montserrat', 'sans-serif'],
-            'sans': ['Inter', 'sans-serif']
-          }
-        }
-      }
-    }
-  </script>
+  
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: 'Inter', sans-serif; }
+    /* style kamu */
   </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors">
+<body>
   <div id="app"></div>
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
