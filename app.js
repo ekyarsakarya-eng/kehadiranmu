@@ -1,4 +1,3 @@
-// === BAGIAN 1: INIT, CONFIG, UTILS ===
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
 const LOGO_APP = 'logo.png';
 const APP_NAME = 'ABSENSI KEHADIRAN TERPADU';
@@ -36,12 +35,6 @@ function stopAllStreams() {
     clearInterval(liveClockInterval);
     liveClockInterval = null;
   }
-  document.querySelectorAll('video').forEach(v => {
-    if (v.srcObject) {
-      v.srcObject.getTracks().forEach(t => t.stop());
-      v.srcObject = null;
-    }
-  });
 }
 
 function applyDarkMode() {
@@ -53,7 +46,7 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // FIXED: sebelumnya =!isDarkMode
+  isDarkMode =!isDarkMode; // sebelumnya =!isDarkMode
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderHome();
@@ -112,68 +105,36 @@ function renderBottomNav(active) {
     </button>
   </div>`;
 }
-// === AKHIR BAGIAN 1 ===
-// === BAGIAN 2: LOGIN & HOME ===
-function renderLogin() {
-  app.innerHTML = `
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4 relative">
-    <div class="absolute inset-0 overflow-hidden opacity-20">
-      <div class="absolute w-96 h-96 bg-[#800000] rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-      <div class="absolute w-96 h-96 bg-blue-600 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse"></div>
-    </div>
-    <div class="w-full max-w-md relative z-10">
-      <div class="flex flex-col items-center mb-8">
-        <div class="w-32 h-32 rounded-full bg-gradient-to-br from-[#800000] to-[#a00000] flex items-center justify-center mb-4 shadow-2xl border-4 border-white/20">
-          <i class="ri-shield-keyhole-fill text-white text-6xl"></i>
-        </div>
-        <h1 class="text-4xl font-extrabold text-white tracking-tight font-header text-center">${APP_NAME}</h1>
-        <p class="text-gray-400 text-sm mt-2">Sistem Absensi Digital</p>
-      </div>
-      <div class="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
-        <div class="mb-6">
-          <label class="block text-sm font-bold text-gray-200 mb-2">ID / NIK</label>
-          <div class="relative">
-            <i class="ri-user-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input id="loginNik" type="text" placeholder="Masukkan ID Anda" class="w-full pl-12 pr-4 py-4 rounded-xl border-white/20 bg-white/5 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#800000] focus:outline-none transition text-lg">
-          </div>
-        </div>
-        <div class="mb-6">
-          <label class="block text-sm font-bold text-gray-200 mb-2">Password</label>
-          <div class="relative">
-            <i class="ri-lock-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input id="loginPass" type="password" placeholder="Masukkan Password" class="w-full pl-12 pr-12 py-4 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#800000] focus:outline-none transition text-lg">
-            <button type="button" onclick="togglePasswordVisibility()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 active:scale-90 transition">
-              <i id="iconMata" class="ri-eye-off-line text-xl"></i>
-            </button>
-          </div>
-        </div>
-        <p id="err" class="text-red-400 text-sm mb-4 text-center font-semibold"></p>
-        <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">Masuk</button>
-      </div>
-      <p class="text-center text-gray-500 text-xs mt-6">© 2025 Absensi Kehadiran Terpadu</p>
-    </div>
-  `;
-}
 
-function togglePasswordVisibility() {
-  const passInput = document.getElementById('loginPass');
-  const iconMata = document.getElementById('iconMata');
-  if (passInput.type === 'password') {
-    passInput.type = 'text';
-    iconMata.className = 'ri-eye-line text-xl';
-  } else {
-    passInput.type = 'password';
-    iconMata.className = 'ri-eye-off-line text-xl';
+async function renderLogin() {
+  stopAllStreams();
+  sessionStorage.clear();
+  currentUser = null;
+  applyDarkMode();
+  const res = await apiCall('get_setting');
+  if (res.status === 'success') {
+    appSetting = res.data;
+    sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
+  app.innerHTML = `
+  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
+      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
+      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">${APP_NAME}</h1>
+      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
+      <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
+      <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
+      <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
+    </div>
+  </div>`;
 }
 
-async function handleLogin() {
-  const username = document.getElementById('loginNik').value;
-  const password = document.getElementById('loginPass').value;
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
   const errEl = document.getElementById('err');
   if (!username ||!password) {
     showToast('Username & Password wajib diisi', 'error');
-    errEl.innerText = 'Username & Password wajib diisi';
     return;
   }
   errEl.innerText = 'Login...';
@@ -198,19 +159,193 @@ function logout() {
   renderLogin();
 }
 
-function startLiveClock() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
-  function update() {
-    const now = new Date();
-    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const tgl = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const clockEl = document.getElementById('liveClock');
-    const dateEl = document.getElementById('liveDate');
-    if (clockEl) clockEl.innerText = jam;
-    if (dateEl) dateEl.innerText = tgl;
+async function quickAbsen(tipe) {
+  showToast('Buka kamera dulu untuk absen', 'warning');
+  renderAbsen(tipe);
+}
+
+async function renderAbsen(tipeDefault = 'IN') {
+  stopAllStreams();
+  absenTipe = tipeDefault;
+  absenFoto = null;
+  
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-3">
+        <i class="ri-${absenTipe === 'IN'? 'login' : 'logout'}-circle-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}</p>
+          <p id="jamAbsen" class="text-sm opacity-80">Loading...</p>
+        </div>
+      </div>
+      <div id="lokasiAbsen" class="text-sm bg-white/20 backdrop-blur-sm rounded-lg p-2">
+        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
+      </div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Selfie</label>
+      <div class="relative w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
+        <video id="cameraAbsen" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+        <img id="previewAbsen" class="w-full h-full object-cover hidden" />
+        <button onclick="startCameraAbsen()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+          <i class="ri-camera-line text-4xl"></i>
+          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
+        </button>
+        <button onclick="ambilFotoAbsen()" id="btnCapture" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
+          <i class="ri-camera-fill"></i> Ambil Foto
+        </button>
+      </div>
+      <button onclick="switchAbsenTipe()" class="w-full mt-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-xl font-bold">
+        Ganti ke Absen ${absenTipe === 'IN'? 'Pulang' : 'Masuk'}
+      </button>
+    </div>
+    <button onclick="submitAbsen()" id="btnSubmitAbsen" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+      <i class="ri-check-line"></i> Submit Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}
+    </button>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+  updateJamAbsen();
+  setInterval(updateJamAbsen, 1000);
+  
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    currentLokasi = { lat: latitude, lon: longitude };
+    document.getElementById('lokasiAbsen').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  }, () => {
+    document.getElementById('lokasiAbsen').innerHTML = `<i class="ri-error-warning-line"></i> Gagal dapat lokasi`;
+    showToast('GPS tidak aktif', 'error');
+  });
+}
+
+function updateJamAbsen() {
+  const now = new Date();
+  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const el = document.getElementById('jamAbsen');
+  if (el) el.innerText = jam;
+}
+
+function switchAbsenTipe() {
+  absenTipe = absenTipe === 'IN'? 'OUT' : 'IN';
+  renderAbsen(absenTipe);
+}
+
+async function startCameraAbsen() {
+  try {
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    const video = document.getElementById('cameraAbsen');
+    video.srcObject = absenStream;
+    video.classList.remove('hidden');
+    document.getElementById('btnBukaKamera').classList.add('hidden');
+    document.getElementById('btnCapture').classList.remove('hidden');
+  } catch (err) {
+    showToast('Kamera error: ' + err.message, 'error');
   }
-  update();
-  liveClockInterval = setInterval(update, 1000);
+}
+
+function ambilFotoAbsen() {
+  const video = document.getElementById('cameraAbsen');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Resize ke max 800px biar file kecil
+  const maxSize = 800;
+  let width = video.videoWidth;
+  let height = video.videoHeight;
+  if (width > height) {
+    if (width > maxSize) {
+      height = height * (maxSize / width);
+      width = maxSize;
+    }
+  } else {
+    if (height > maxSize) {
+      width = width * (maxSize / height);
+      height = maxSize;
+    }
+  }
+  
+  canvas.width = width;
+  canvas.height = height;
+  ctx.drawImage(video, 0, 0, width, height);
+  
+  // Kompres ke 0.6 = 60% quality, hasilnya ~100-200KB
+  absenFoto = canvas.toDataURL('image/jpeg', 0.6);
+  
+  const preview = document.getElementById('previewAbsen');
+  preview.src = absenFoto;
+  preview.classList.remove('hidden');
+  video.classList.add('hidden');
+  document.getElementById('btnCapture').classList.add('hidden');
+  document.getElementById('btnSubmitAbsen').disabled = false;
+  
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  showToast('Foto siap!', 'success');
+}
+async function submitAbsen() {
+  if (!absenFoto) {
+    showToast('Ambil foto dulu!', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnSubmitAbsen');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
+  
+  // GPS dengan timeout 3 detik aja
+  let lat = null, lon = null;
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+    });
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  } catch (e) {
+    console.log('GPS timeout, lanjut tanpa lokasi');
+  }
+  
+  const res = await apiCall('absen', {
+    nama: currentUser.Nama.trim(),
+    tipe: absenTipe,
+    foto: absenFoto,
+    latitude: lat,
+    longitude: lon,
+    lokasi: lat? `${lat}, ${lon}` : ''
+  });
+  
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    // Gak usah renderHome(), langsung balik aja
+    setTimeout(() => renderHome(), 800);
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
+    showToast(res.msg, 'error');
+  }
+}
+// --- AKHIR BAGIAN 1---
+function cekStatusShift(dashboardRes) {
+  const jamPulang = dashboardRes.jamPulang || '-';
+  if (jamPulang === '-' || jamPulang === '00:00') return { bisaMasuk: true, info: '' };
+  const now = new Date();
+  const [jamP, menitP, detikP = 0] = jamPulang.split(':');
+  const waktuPulang = new Date();
+  waktuPulang.setHours(parseInt(jamP), parseInt(menitP), parseInt(detikP));
+  if (waktuPulang > now) waktuPulang.setDate(waktuPulang.getDate() - 1);
+  const bisaMasukLagi = new Date(waktuPulang.getTime() + 12 * 60 * 60 * 1000);
+  const selisihMs = bisaMasukLagi - now;
+  if (selisihMs <= 0) return { bisaMasuk: true, info: 'Siap untuk shift berikutnya!' };
+  const sisaJam = Math.floor(selisihMs / 3600000);
+  const sisaMenit = Math.floor((selisihMs % 3600000) / 60000);
+  const jamBuka = bisaMasukLagi.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  return { bisaMasuk: false, info: `Shift berikutnya: ${jamBuka}`, countdown: `${sisaJam}j ${sisaMenit}m`, jamPulang: jamPulang };
 }
 
 function initSwipeGesture() {
@@ -243,14 +378,32 @@ function swipeCard(idx) {
   document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
 }
 
+function startLiveClock() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
+  function update() {
+    const now = new Date();
+    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const tgl = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const clockEl = document.getElementById('liveClock');
+    const dateEl = document.getElementById('liveDate');
+    if (clockEl) clockEl.innerText = jam;
+    if (dateEl) dateEl.innerText = tgl;
+  }
+  update();
+  liveClockInterval = setInterval(update, 1000);
+}
+
 async function renderHome() {
   stopAllStreams();
+  
+  // Render skeleton dulu biar cepet muncul
   let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
   fotoUser = fotoUser.replace(/\s/g, '');
   if (fotoUser.includes('uc?export=view&id=')) {
     const fileId = fotoUser.split('id=')[1].split('&')[0];
     fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
   }
+  
   const greeting = getGreeting();
   const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
 
@@ -281,7 +434,6 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
-
     <div id="statusCard" class="bg-gray-300 text-white rounded-2xl p-4 shadow-lg mb-4 animate-pulse">
       <div class="flex items-center gap-3">
         <i class="ri-loader-4-line text-3xl animate-spin"></i>
@@ -291,7 +443,6 @@ async function renderHome() {
         </div>
       </div>
     </div>
-
     <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
@@ -343,7 +494,6 @@ async function renderHome() {
       </div>
       <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
     </div>
-
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
@@ -373,636 +523,63 @@ async function renderHome() {
         </button>
       </div>
     </div>
+  </div>
   ${renderBottomNav('home')}
   `;
+  
   applyDarkMode();
   startLiveClock();
   initSwipeGesture();
-
-  try {
-    const [dashboardRes, rekapRes] = await Promise.all([
-      apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
-      apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
-    ]);
-
+  
+  // Load data setelah UI muncul - gak blocking
+  Promise.all([
+    apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
+    apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
+  ]).then(([dashboardRes, rekapRes]) => {
+    // Update status card
+    const jamMasuk = dashboardRes.jamMasuk || '00:00';
+    const jamPulang = dashboardRes.jamPulang || '00:00';
+    globalJamPulang = jamPulang;
+    const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
+    const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
+    
+    let statusText = 'Belum Absen Masuk';
+    let statusColor = 'bg-red-500';
+    let statusIcon = 'ri-close-circle-line';
+    if (sudahPulang) {
+      statusText = `Sudah Pulang ${jamPulang}`;
+      statusColor = 'bg-blue-500';
+      statusIcon = 'ri-home-4-line';
+    } else if (sudahMasuk) {
+      statusText = `Sudah Masuk ${jamMasuk}`;
+      statusColor = 'bg-green-500';
+      statusIcon = 'ri-checkbox-circle-line';
+    }
+    
     const statusCard = document.getElementById('statusCard');
-    if (statusCard && dashboardRes.status === 'success') {
-      const jamMasuk = dashboardRes.jamMasuk || '00:00';
-      const jamPulang = dashboardRes.jamPulang || '00:00';
-      globalJamPulang = jamPulang;
-      const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
-      const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-      let statusText = 'Belum Absen Masuk';
-      let statusColor = 'bg-red-500';
-      let statusIcon = 'ri-close-circle-line';
-      if (sudahPulang) {
-        statusText = `Sudah Pulang ${jamPulang}`;
-        statusColor = 'bg-blue-500';
-        statusIcon = 'ri-home-4-line';
-      } else if (sudahMasuk) {
-        statusText = `Sudah Masuk ${jamMasuk}`;
-        statusColor = 'bg-green-500';
-        statusIcon = 'ri-checkbox-circle-line';
-      }
-      statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
-      statusCard.onclick = renderAbsen;
-      statusCard.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <i class="${statusIcon} text-3xl"></i>
-            <div>
-              <p class="text-xs opacity-90">Status Hari Ini</p>
-              <p class="font-bold text-lg">${statusText}</p>
-            </div>
+    statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
+    statusCard.onclick = renderAbsen;
+    statusCard.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="${statusIcon} text-3xl"></i>
+          <div>
+            <p class="text-xs opacity-90">Status Hari Ini</p>
+            <p class="font-bold text-lg">${statusText}</p>
           </div>
-          <i class="ri-arrow-right-s-line text-2xl"></i>
-        </div>`;
-    }
-
-    if (rekapRes.status === 'success' && rekapRes.statistik) {
-      const elHadir = document.getElementById('statHadir');
-      const elIzin = document.getElementById('statIzin');
-      const elAlpa = document.getElementById('statAlpa');
-      if (elHadir) elHadir.innerText = rekapRes.statistik.hadir || 0;
-      if (elIzin) elIzin.innerText = rekapRes.statistik.izin || 0;
-      if (elAlpa) elAlpa.innerText = rekapRes.statistik.alpa || 0;
-    }
-  } catch (e) {
-    console.log('Error load data:', e);
-    showToast('Gagal load data dashboard', 'error');
-  }
-}
-// === AKHIR BAGIAN 2 ===
-// === BAGIAN 3: ABSEN & PATROLI ===
-async function quickAbsen(tipe) {
-  showToast('Buka kamera dulu untuk absen', 'warning');
-  renderAbsen(tipe);
-}
-
-async function renderAbsen(tipeDefault = 'IN') {
-  stopAllStreams();
-  absenTipe = tipeDefault;
-  absenFoto = null;
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-2xl p-5 shadow-xl mb-4">
-      <div class="flex items-center gap-3 mb-3">
-        <i class="ri-${absenTipe === 'IN'? 'login' : 'logout'}-circle-line text-4xl"></i>
-        <div>
-          <p class="font-bold text-lg">Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}</p>
-          <p id="jamAbsen" class="text-sm opacity-80">Loading...</p>
         </div>
-      </div>
-      <div id="lokasiAbsen" class="text-sm bg-white/20 backdrop-blur-sm rounded-lg p-2">
-        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
-      </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Selfie</label>
-      <div class="relative w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
-        <video id="cameraAbsen" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-        <img id="previewAbsen" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraAbsen()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-          <i class="ri-camera-line text-4xl"></i>
-          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
-        </button>
-        <button onclick="ambilFotoAbsen()" id="btnCapture" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
-          <i class="ri-camera-fill"></i> Ambil Foto
-        </button>
-      </div>
-      <button onclick="switchAbsenTipe()" class="w-full mt-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-xl font-bold">
-        Ganti ke Absen ${absenTipe === 'IN'? 'Pulang' : 'Masuk'}
-      </button>
-    </div>
-    <button onclick="submitAbsen()" id="btnSubmitAbsen" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-      <i class="ri-check-line"></i> Submit Absen ${absenTipe === 'IN'? 'Masuk' : 'Pulang'}
-    </button>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-  applyDarkMode();
-  updateJamAbsen();
-  setInterval(updateJamAbsen, 1000);
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    currentLokasi = { lat: latitude, lon: longitude };
-    document.getElementById('lokasiAbsen').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-  }, () => {
-    document.getElementById('lokasiAbsen').innerHTML = `<i class="ri-error-warning-line"></i> Gagal dapat lokasi`;
-    showToast('GPS tidak aktif', 'error');
-  });
-}
-
-function updateJamAbsen() {
-  const now = new Date();
-  const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const el = document.getElementById('jamAbsen');
-  if (el) el.innerText = jam;
-}
-
-function switchAbsenTipe() {
-  absenTipe = absenTipe === 'IN'? 'OUT' : 'IN';
-  renderAbsen(absenTipe);
-}
-
-async function startCameraAbsen() {
-  try {
-    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-    const video = document.getElementById('cameraAbsen');
-    video.srcObject = absenStream;
-    video.classList.remove('hidden');
-    document.getElementById('btnBukaKamera').classList.add('hidden');
-    document.getElementById('btnCapture').classList.remove('hidden');
-  } catch (err) {
-    showToast('Kamera error: ' + err.message, 'error');
-  }
-}
-
-function ambilFotoAbsen() {
-  const video = document.getElementById('cameraAbsen');
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const maxSize = 600;
-  let width = video.videoWidth;
-  let height = video.videoHeight;
-  if (width > height) {
-    if (width > maxSize) {
-      height = height * (maxSize / width);
-      width = maxSize;
-    }
-  } else {
-    if (height > maxSize) {
-      width = width * (maxSize / height);
-      height = maxSize;
-    }
-  }
-  canvas.width = width;
-  canvas.height = height;
-  ctx.drawImage(video, 0, 0, width, height);
-  absenFoto = canvas.toDataURL('image/jpeg', 0.5);
-  const preview = document.getElementById('previewAbsen');
-  preview.src = absenFoto;
-  preview.classList.remove('hidden');
-  video.classList.add('hidden');
-  document.getElementById('btnCapture').classList.add('hidden');
-  document.getElementById('btnSubmitAbsen').disabled = false;
-  if (absenStream) {
-    absenStream.getTracks().forEach(track => track.stop());
-    absenStream = null;
-  }
-  showToast('Foto siap!', 'success');
-}
-
-async function submitAbsen() {
-  if (!absenFoto) {
-    showToast('Ambil foto dulu!', 'error');
-    return;
-  }
-  const btn = document.getElementById('btnSubmitAbsen');
-  if (btn.disabled) return;
-  btn.disabled = true;
-  setTimeout(() => { if(btn) btn.disabled = false }, 2000);
-  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
-  let lat = null, lon = null;
-  try {
-    const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 60000 });
-    });
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  } catch (e) {
-    console.log('GPS gagal, lanjut tanpa lokasi');
-  }
-  const res = await apiCall('absen', {
-    nama: currentUser.Nama.trim(),
-    tipe: absenTipe,
-    foto: absenFoto,
-    latitude: lat,
-    longitude: lon,
-    lokasi: lat? `${lat}, ${lon}` : ''
-  });
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 800);
-  } else {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
-    showToast(res.msg, 'error');
-  }
-}
-
-async function renderPatroli() {
-  stopAllStreams();
-  patroliFoto = null;
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Patroli Satpam</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-green-600 to-green-800 text-white rounded-2xl p-5 shadow-xl mb-4">
-      <div class="flex items-center gap-3 mb-3">
-        <i class="ri-shield-check-line text-4xl"></i>
-        <div>
-          <p class="font-bold text-lg">Checklist Patroli</p>
-          <p class="text-xs opacity-80">Pilih pos & upload bukti foto</p>
-        </div>
-      </div>
-      <div id="lokasiPatroli" class="text-sm mb-3 bg-white/20 backdrop-blur-sm rounded-lg p-2">
-        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
-      </div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">1. Pilih Pos Patroli</label>
-      <select id="selectPos" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-green-600 focus:outline-none mb-4">
-        <option value="">Loading pos...</option>
-      </select>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">2. Ambil Foto Bukti</label>
-      <div class="relative w-full h-48 mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
-        <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-        <img id="previewPatroli" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-          <i class="ri-camera-line text-4xl"></i>
-          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
-        </button>
-        <button onclick="ambilFotoPatroli()" id="btnCapturePatroli" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
-          <i class="ri-camera-fill"></i> Ambil Foto
-        </button>
-      </div>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">3. Keterangan (Opsional)</label>
-      <textarea id="ketPatroli" placeholder="Contoh: Kondisi aman, pintu terkunci" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-green-600 focus:outline-none mb-4" rows="2"></textarea>
-      <button onclick="submitPatroli()" id="btnSubmitPatroli" class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-        <i class="ri-check-line"></i> Submit Check-in Pos
-      </button>
-    </div>
-    <button onclick="renderLaporKejadian()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
-      <i class="ri-alarm-warning-line text-xl"></i> Lapor Kejadian Darurat
-    </button>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-  applyDarkMode();
-  const resPos = await apiCall('get_pos_patroli');
-  const selectPos = document.getElementById('selectPos');
-  if (resPos.status === 'success' && resPos.data.length > 0) {
-    selectPos.innerHTML = '<option value="">-- Pilih Pos --</option>';
-    resPos.data.forEach(pos => {
-      selectPos.innerHTML += `<option value="${pos.id}" data-lat="${pos.lat}" data-lon="${pos.lon}">${pos.nama}</option>`;
-    });
-  } else {
-    selectPos.innerHTML = '<option value="">Tidak ada pos aktif</option>';
-  }
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-  }, () => {
-    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-error-warning-line"></i> Gagal dapat lokasi`;
-    showToast('GPS tidak aktif', 'error');
-  });
-}
-
-async function startCameraPatroli() {
-  try {
-    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.getElementById('cameraPatroli');
-    video.srcObject = absenStream;
-    video.classList.remove('hidden');
-    document.getElementById('btnBukaKamera').classList.add('hidden');
-    document.getElementById('btnCapturePatroli').classList.remove('hidden');
-  } catch (err) {
-    showToast('Kamera error: ' + err.message, 'error');
-  }
-}
-
-function ambilFotoPatroli() {
-  const video = document.getElementById('cameraPatroli');
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  patroliFoto = canvas.toDataURL('image/jpeg', 0.8);
-  const preview = document.getElementById('previewPatroli');
-  preview.src = patroliFoto;
-  preview.classList.remove('hidden');
-  video.classList.add('hidden');
-  document.getElementById('btnCapturePatroli').classList.add('hidden');
-  document.getElementById('btnSubmitPatroli').disabled = false;
-  if (absenStream) {
-    absenStream.getTracks().forEach(track => track.stop());
-    absenStream = null;
-  }
-  showToast('Foto berhasil diambil!', 'success');
-}
-
-async function submitPatroli() {
-  const selectPos = document.getElementById('selectPos');
-  const posId = selectPos.value;
-  const posNama = selectPos.options[selectPos.selectedIndex].text;
-  const ket = document.getElementById('ketPatroli').value;
-  const btn = document.getElementById('btnSubmitPatroli');
-  if (!posId) {
-    showToast('Pilih pos patroli dulu!', 'error');
-    return;
-  }
-  if (!patroliFoto) {
-    showToast('Ambil foto bukti dulu!', 'error');
-    return;
-  }
-  btn.disabled = true;
-  btn.innerText = 'Mengirim...';
-  let lat = null, lon = null;
-  await new Promise(resolve => {
-    navigator.geolocation.getCurrentPosition(pos => {
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-      resolve();
-    }, () => resolve());
-  });
-  const res = await apiCall('submit_patroli', {
-    nama: currentUser.Nama.trim(),
-    pos: posNama,
-    foto: patroliFoto,
-    latitude: lat,
-    longitude: lon,
-    keterangan: ket
-  });
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderPatroli(), 1000);
-  } else {
-    btn.disabled = false;
-    btn.innerText = 'Submit Check-in Pos';
-    showToast(res.msg, 'error');
-  }
-}
-
-async function renderLaporKejadian() {
-  stopAllStreams();
-  kejadianFoto = null;
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderPatroli()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Lapor Kejadian</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-2xl p-5 shadow-xl mb-4">
-      <div class="flex items-center gap-3 mb-2">
-        <i class="ri-alarm-warning-line text-4xl"></i>
-        <div>
-          <p class="font-bold text-lg">Laporan Darurat</p>
-          <p class="text-xs opacity-80">Laporkan kejadian mencurigakan</p>
-        </div>
-      </div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Kejadian</label>
-        <select id="jenisKejadian" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-orange-500 focus:outline-none">
-          <option value="">-- Pilih Jenis --</option>
-          <option value="Tamu Mencurigakan">Tamu Mencurigakan</option>
-          <option value="Kerusakan Fasilitas">Kerusakan Fasilitas</option>
-          <option value="Kebakaran">Kebakaran</option>
-          <option value="Pencurian">Pencurian</option>
-          <option value="Keributan">Keributan</option>
-          <option value="Lainnya">Lainnya</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tingkat Urgensi</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="setUrgensi('Rendah')" id="urgensiRendah" class="p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition">Rendah</button>
-          <button onclick="setUrgensi('Sedang')" id="urgensiSedang" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Sedang</button>
-          <button onclick="setUrgensi('Tinggi')" id="urgensiTinggi" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Tinggi</button>
-        </div>
-      </div>
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Deskripsi Kejadian</label>
-        <textarea id="deskripsiKejadian" placeholder="Jelaskan kronologi kejadian..." class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-orange-500 focus:outline-none" rows="4"></textarea>
-      </div>
-      <div>
-        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Bukti</label>
-        <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
-          <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-          <img id="previewKejadian" class="w-full h-full object-cover hidden" />
-          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-            <i class="ri-camera-line text-4xl"></i>
-            <p class="text-sm font-semibold">Tap untuk buka kamera</p>
-          </button>
-          <button onclick="ambilFotoKejadian()" id="btnCaptureKejadian" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
-            <i class="ri-camera-fill"></i> Ambil Foto
-          </button>
-        </div>
-      </div>
-      <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
-        <i class="ri-send-plane-fill"></i> Kirim Laporan
-      </button>
-    </div>
-  </div>
-  ${renderBottomNav('home')}
-  `;
-  applyDarkMode();
-  window.urgensiKejadian = 'Rendah';
-}
-
-function setUrgensi(level) {
-  urgensiKejadian = level;
-  document.getElementById('urgensiRendah').className = level === 'Rendah'?
-    'p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition' :
-    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
-  document.getElementById('urgensiSedang').className = level === 'Sedang'?
-    'p-3 rounded-lg border-2 border-yellow-500 bg-yellow-500 text-white font-bold active:scale-95 transition' :
-    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
-  document.getElementById('urgensiTinggi').className = level === 'Tinggi'?
-    'p-3 rounded-lg border-2 border-red-500 bg-red-500 text-white font-bold active:scale-95 transition' :
-    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
-}
-
-async function startCameraKejadian() {
-  try {
-    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.getElementById('cameraKejadian');
-    video.srcObject = absenStream;
-    video.classList.remove('hidden');
-    document.getElementById('btnBukaKameraKejadian').classList.add('hidden');
-    document.getElementById('btnCaptureKejadian').classList.remove('hidden');
-  } catch (err) {
-    showToast('Kamera error: ' + err.message, 'error');
-  }
-}
-
-function ambilFotoKejadian() {
-  const video = document.getElementById('cameraKejadian');
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  kejadianFoto = canvas.toDataURL('image/jpeg', 0.8);
-  const preview = document.getElementById('previewKejadian');
-  preview.src = kejadianFoto;
-  preview.classList.remove('hidden');
-  video.classList.add('hidden');
-  document.getElementById('btnCaptureKejadian').classList.add('hidden');
-  if (absenStream) {
-    absenStream.getTracks().forEach(track => track.stop());
-    absenStream = null;
-  }
-  showToast('Foto berhasil diambil!', 'success');
-}
-
-async function submitKejadian() {
-  const jenis = document.getElementById('jenisKejadian').value;
-  const deskripsi = document.getElementById('deskripsiKejadian').value;
-  const btn = document.getElementById('btnSubmitKejadian');
-  if (!jenis) {
-    showToast('Pilih jenis kejadian dulu!', 'error');
-    return;
-  }
-  if (!deskripsi) {
-    showToast('Isi deskripsi kejadian!', 'error');
-    return;
-  }
-  if (!kejadianFoto) {
-    showToast('Ambil foto bukti dulu!', 'error');
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
-  let lat = null, lon = null;
-  await new Promise(resolve => {
-    navigator.geolocation.getCurrentPosition(pos => {
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-      resolve();
-    }, () => resolve());
-  });
-  const res = await apiCall('lapor_kejadian', {
-    nama: currentUser.Nama.trim(),
-    jenis: jenis,
-    deskripsi: deskripsi,
-    urgensi: urgensiKejadian,
-    foto: kejadianFoto,
-    latitude: lat,
-    longitude: lon
-  });
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderPatroli(), 1000);
-  } else {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Kirim Laporan';
-    showToast(res.msg, 'error');
-  }
-}
-// === AKHIR BAGIAN 3 ===
-// === BAGIAN 4: REKAP, ACCOUNT, DARURAT & INIT ===
-let rekapDataCache = [];
-let rekapPage = 0;
-const REKAP_PER_PAGE = 10;
-
-async function renderRekap() {
-  stopAllStreams();
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()" class="text-2xl text-gray-600 dark:text-gray-300"><i class="ri-arrow-left-line"></i></button>
-    <p class="font-bold text-lg text-gray-900 dark:text-white">Riwayat Absensi</p>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="mb-4">
-      <select id="filterBulan" onchange="loadRekapData()" class="w-full p-3 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold">
-        ${generateBulanOptions()}
-      </select>
-    </div>
-    <div id="rekapContent">
-      <div class="animate-pulse space-y-3">
-        <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-        <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-      </div>
-    </div>
-  </div>
-  ${renderBottomNav('home')}`;
-  applyDarkMode();
-  loadRekapData();
-}
-
-function generateBulanOptions() {
-  const options = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    options.push(`<option value="${val}" ${i===0?'selected':''}>${label}</option>`);
-  }
-  return options.join('');
-}
-
-async function loadRekapData() {
-  const bulan = document.getElementById('filterBulan').value;
-  const container = document.getElementById('rekapContent');
-  container.innerHTML = `<div class="animate-pulse space-y-3">
-    <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-    <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-  </div>`;
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan });
-  rekapDataCache = res.data || [];
-  rekapPage = 0;
-  renderRekapPage(true);
-}
-
-function renderRekapPage(reset = false) {
-  const container = document.getElementById('rekapContent');
-  const start = rekapPage * REKAP_PER_PAGE;
-  const end = start + REKAP_PER_PAGE;
-  const pageData = rekapDataCache.slice(start, end);
-  if (reset) {
-    if (rekapDataCache.length === 0) {
-      container.innerHTML = `<div class="text-center py-10 text-gray-500 dark:text-gray-400">
-        <i class="ri-file-list-3-line text-5xl mb-2"></i>
-        <p>Belum ada data absensi bulan ini</p>
+        <i class="ri-arrow-right-s-line text-2xl"></i>
       </div>`;
-      return;
+    
+    // Update statistik
+    if (rekapRes.status === 'success' && rekapRes.statistik) {
+      document.getElementById('statHadir').innerText = rekapRes.statistik.hadir || 0;
+      document.getElementById('statIzin').innerText = rekapRes.statistik.izin || 0;
+      document.getElementById('statAlpa').innerText = rekapRes.statistik.alpa || 0;
     }
-    container.innerHTML = `<div id="rekapList" class="space-y-3"></div>
-      <div id="rekapLoadMore" class="text-center mt-4"></div>`;
-  }
-  const list = document.getElementById('rekapList');
-  pageData.forEach(r => {
-    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'yellow' : r.Status === 'Izin'? 'blue' : 'red';
-    const statusIcon = r.Status === 'Hadir'? 'ri-checkbox-circle-fill' : r.Status === 'Terlambat'? 'ri-time-fill' : r.Status === 'Izin'? 'ri-mail-fill' : 'ri-close-circle-fill';
-    list.innerHTML += `
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
-      <div class="flex justify-between items-start mb-2">
-        <div>
-          <p class="font-bold text-gray-900 dark:text-white">${r.Tanggal}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">${r.Durasi}</p>
-        </div>
-        <span class="px-3 py-1 rounded-full text-xs font-bold bg-${statusColor}-100 dark:bg-${statusColor}-900 text-${statusColor}-700 dark:text-${statusColor}-300">
-          <i class="${statusIcon}"></i> ${r.Status}
-        </span>
-      </div>
-      <div class="grid grid-cols-2 gap-2 text-sm">
-        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Masuk</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Masuk']}</p></div>
-        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Pulang</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Pulang']}</p></div>
-      </div>
-      ${r.Foto_IN? `<img src="${r.Foto_IN}" loading="lazy" class="w-full h-32 object-cover rounded-lg mt-2" />` : ''}
-    </div>`;
   });
-  const loadMore = document.getElementById('rekapLoadMore');
-  if (end < rekapDataCache.length) {
-    loadMore.innerHTML = `<button onclick="loadMoreRekap()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl font-bold active:scale-95">Muat Lainnya</button>`;
-  } else {
-    loadMore.innerHTML = `<p class="text-xs text-gray-400">Semua data ditampilkan</p>`;
-  }
 }
-
-function loadMoreRekap() {
-  rekapPage++;
-  renderRekapPage(false);
-}
-
+// --- AKHIR BAGIAN 2 ---
 function renderAccount() {
   stopAllStreams();
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
@@ -1075,6 +652,637 @@ async function saveAccount() {
   }
 }
 
+let rekapDataCache = [];
+let rekapPage = 0;
+const REKAP_PER_PAGE = 10;
+
+async function renderRekap() {
+  stopAllStreams();
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()" class="text-2xl text-gray-600 dark:text-gray-300"><i class="ri-arrow-left-line"></i></button>
+    <p class="font-bold text-lg text-gray-900 dark:text-white">Riwayat Absensi</p>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="mb-4">
+      <select id="filterBulan" onchange="loadRekapData()" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold">
+        ${generateBulanOptions()}
+      </select>
+    </div>
+    <div id="rekapContent">
+      <div class="animate-pulse space-y-3">
+        <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+        <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      </div>
+    </div>
+  ${renderBottomNav('home')}`;
+  applyDarkMode();
+  loadRekapData();
+}
+
+async function loadRekapData() {
+  const bulan = document.getElementById('filterBulan').value;
+  const container = document.getElementById('rekapContent');
+  container.innerHTML = `<div class="animate-pulse space-y-3">
+    <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+    <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+  </div>`;
+
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan });
+  rekapDataCache = res.data || [];
+  rekapPage = 0;
+  renderRekapPage(true);
+}
+
+function renderRekapPage(reset = false) {
+  const container = document.getElementById('rekapContent');
+  const start = rekapPage * REKAP_PER_PAGE;
+  const end = start + REKAP_PER_PAGE;
+  const pageData = rekapDataCache.slice(start, end);
+
+  if (reset) {
+    if (rekapDataCache.length === 0) {
+      container.innerHTML = `<div class="text-center py-10 text-gray-500 dark:text-gray-400">
+        <i class="ri-file-list-3-line text-5xl mb-2"></i>
+        <p>Belum ada data absensi bulan ini</p>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = `<div id="rekapList" class="space-y-3"></div>
+      <div id="rekapLoadMore" class="text-center mt-4"></div>`;
+  }
+
+  const list = document.getElementById('rekapList');
+  pageData.forEach(r => {
+    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'yellow' : r.Status === 'Izin'? 'blue' : 'red';
+    const statusIcon = r.Status === 'Hadir'? 'ri-checkbox-circle-fill' : r.Status === 'Terlambat'? 'ri-time-fill' : r.Status === 'Izin'? 'ri-mail-fill' : 'ri-close-circle-fill';
+
+    list.innerHTML += `
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <p class="font-bold text-gray-900 dark:text-white">${r.Tanggal}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">${r.Durasi}</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-${statusColor}-100 dark:bg-${statusColor}-900 text-${statusColor}-700 dark:text-${statusColor}-300">
+          <i class="${statusIcon}"></i> ${r.Status}
+        </span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Masuk</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Masuk']}</p></div>
+        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Pulang</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Pulang']}</p></div>
+      </div>
+      ${r.Foto_IN? `<img src="${r.Foto_IN}" loading="lazy" class="w-full h-32 object-cover rounded-lg mt-2" />` : ''}
+    </div>`;
+  });
+
+  const loadMore = document.getElementById('rekapLoadMore');
+  if (end < rekapDataCache.length) {
+    loadMore.innerHTML = `<button onclick="loadMoreRekap()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl font-bold active:scale-95">Muat Lainnya</button>`;
+  } else {
+    loadMore.innerHTML = `<p class="text-xs text-gray-400">Semua data ditampilkan</p>`;
+  }
+}
+
+function loadMoreRekap() {
+  rekapPage++;
+  renderRekapPage(false);
+}
+
+async function loadRekapBulan() {
+  const bulan = document.getElementById('bulanRekap').value;
+  const content = document.getElementById('rekapContent');
+
+  if (!bulan) {
+    content.innerHTML = `
+      <div class="text-center py-12 text-gray-400 dark:text-gray-600">
+        <i class="ri-calendar-todo-line text-5xl mb-3"></i>
+        <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
+      </div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="space-y-3 animate-pulse">
+      <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+    </div>`;
+
+  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan: bulan });
+
+  if (res.status!== 'success') {
+    content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
+    return;
+  }
+
+  const [year, month] = bulan.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const dataMap = {};
+
+  res.data.forEach((r, idx) => {
+    if (r.TanggalRaw && r.TanggalRaw.startsWith(`${year}-${String(month).padStart(2,'0')}`)) {
+      const day = parseInt(r.TanggalRaw.split('-')[2]);
+      dataMap[day] = {...r, _idx: idx };
+    }
+  });
+
+  window.rekapDataBulanIni = Object.values(dataMap);
+
+  const totalHadir = res.statistik.hadir || 0;
+  const totalTerlambat = res.statistik.terlambat || 0;
+  const totalAlpa = res.statistik.alpa || 0;
+  const totalIzin = res.statistik.izin || 0;
+  const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  let html = `
+    <div class="bg-gradient-to-r from-[#800000] to-[#a00000] text-white rounded-xl p-4 mb-4 shadow-lg">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-xs opacity-80">Kehadiran ${namaBulan[month-1]} ${year}</p>
+          <p class="text-3xl font-bold">${totalHadir}/${daysInMonth}</p>
+          <p class="text-xs opacity-80 mt-1">hari</p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-bold">${Math.round(totalHadir/daysInMonth*100)}%</div>
+          <p class="text-xs opacity-80">Tingkat hadir</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+      <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
+        <div>M</div><div>S</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
+      </div>
+      <div class="grid grid-cols-7 gap-2">`;
+
+  for(let i=0; i<firstDay; i++){
+    html += `<div></div>`;
+  }
+
+  for(let day=1; day<=daysInMonth; day++){
+    const r = dataMap[day];
+    let bg = 'bg-gray-100 dark:bg-gray-700';
+    let text = 'text-gray-400';
+    let status = 'alpa';
+    let idx = -1;
+
+    if(r){
+      idx = r._idx;
+      if(r.Status === 'Hadir'){
+        bg = 'bg-green-500';
+        status = 'hadir';
+        text = 'text-white';
+      } else if(r.Status === 'Terlambat'){
+        bg = 'bg-orange-500';
+        status = 'terlambat';
+        text = 'text-white';
+      } else if(r.Status === 'Izin'){
+        bg = 'bg-blue-500';
+        status = 'izin';
+        text = 'text-white';
+      } else {
+        bg = 'bg-red-500';
+        text = 'text-white';
+      }
+    }
+
+    const today = new Date();
+    const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
+    const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
+
+    html += `
+      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})"
+              class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
+        ${day}
+      </button>`;
+  }
+
+  html += `
+      </div>
+      <div class="flex justify-center gap-3 mt-4 text-xs flex-wrap">
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div>Hadir</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Telat</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-500 rounded"></div>Izin</div>
+        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-500 rounded"></div>Alpa</div>
+      </div>
+    </div>
+
+    <div id="detailTanggal" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 hidden">
+      <p class="text-center text-gray-400 text-sm">Klik tanggal untuk lihat detail</p>
+    </div>
+  `;
+
+  content.innerHTML = html;
+}
+
+function showDetailTanggal(day, status, idx) {
+  const el = document.getElementById('detailTanggal');
+  const r = idx >= 0? window.rekapDataBulanIni.find(d => d._idx === idx) : null;
+
+  if (!r || status === 'alpa') {
+    el.innerHTML = `
+      <div class="text-center py-4">
+        <i class="ri-close-circle-line text-4xl text-red-500 mb-2"></i>
+        <p class="font-bold text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-sm text-red-500">Tidak Ada Data Absensi</p>
+      </div>`;
+    el.classList.remove('hidden');
+    return;
+  }
+
+  const masuk = r['Jam Masuk'] || '-';
+  const pulang = r['Jam Pulang'] || '-';
+  const durasi = r.Durasi || '-';
+  const lokasi = r.Lokasi || '-';
+  const lat = r.Latitude || '';
+  const lon = r.Longitude || '';
+  let warnaStatus = 'text-green-600';
+  let iconStatus = 'ri-checkbox-circle-line';
+  let labelStatus = 'Hadir Tepat Waktu';
+
+  if(status === 'terlambat') {
+    warnaStatus = 'text-orange-600';
+    iconStatus = 'ri-time-line';
+    labelStatus = 'Terlambat';
+  } else if(status === 'izin') {
+    warnaStatus = 'text-blue-600';
+    iconStatus = 'ri-mail-line';
+    labelStatus = 'Izin';
+  }
+
+  el.innerHTML = `
+    <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+      <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
+      <div>
+        <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
+        <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-3 text-center mb-3">
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${masuk}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulang</p>
+        <p class="font-bold text-sm text-gray-800 dark:text-white">${pulang}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
+        <p class="font-bold text-sm text-[#800000]">${durasi}</p>
+      </div>
+    </div>
+    ${lokasi!== '-'? `
+    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div class="flex items-start gap-2">
+        <i class="ri-map-pin-line text-gray-500 dark:text-gray-400 mt-0.5"></i>
+        <div class="flex-1">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
+          <p class="text-sm text-gray-800 dark:text-white mb-2">${lokasi}</p>
+          ${lat && lon? `
+          <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')"
+                  class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-95 transition">
+            <i class="ri-map-2-line"></i> Buka Maps
+          </button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+    ` : ''}
+  `;
+  el.classList.remove('hidden');
+  el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+// --- AKHIR BAGIAN 3 ---
+// --- PATROLI ---
+async function renderPatroli() {
+  stopAllStreams();
+  patroliFoto = null;
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Patroli Satpam</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-green-600 to-green-800 text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-3">
+        <i class="ri-shield-check-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Checklist Patroli</p>
+          <p class="text-xs opacity-80">Pilih pos & upload bukti foto</p>
+        </div>
+      </div>
+      <div id="lokasiPatroli" class="text-sm mb-3 bg-white/20 backdrop-blur-sm rounded-lg p-2">
+        <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">1. Pilih Pos Patroli</label>
+      <select id="selectPos" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-green-600 focus:outline-none mb-4">
+        <option value="">Loading pos...</option>
+      </select>
+
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">2. Ambil Foto Bukti</label>
+      <div class="relative w-full h-48 mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
+        <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+        <img id="previewPatroli" class="w-full h-full object-cover hidden" />
+        <button onclick="startCameraPatroli()" id="btnBukaKamera" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+          <i class="ri-camera-line text-4xl"></i>
+          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
+        </button>
+        <button onclick="ambilFotoPatroli()" id="btnCapturePatroli" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
+          <i class="ri-camera-fill"></i> Ambil Foto
+        </button>
+      </div>
+
+      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">3. Keterangan (Opsional)</label>
+      <textarea id="ketPatroli" placeholder="Contoh: Kondisi aman, pintu terkunci" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-green-600 focus:outline-none mb-4" rows="2"></textarea>
+
+      <button onclick="submitPatroli()" id="btnSubmitPatroli" class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <i class="ri-check-line"></i> Submit Check-in Pos
+      </button>
+    </div>
+
+    <button onclick="renderLaporKejadian()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+      <i class="ri-alarm-warning-line text-xl"></i> Lapor Kejadian Darurat
+    </button>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+
+  const resPos = await apiCall('get_pos_patroli');
+  const selectPos = document.getElementById('selectPos');
+  if (resPos.status === 'success' && resPos.data.length > 0) {
+    selectPos.innerHTML = '<option value="">-- Pilih Pos --</option>';
+    resPos.data.forEach(pos => {
+      selectPos.innerHTML += `<option value="${pos.id}" data-lat="${pos.lat}" data-lon="${pos.lon}">${pos.nama}</option>`;
+    });
+  } else {
+    selectPos.innerHTML = '<option value="">Tidak ada pos aktif</option>';
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-map-pin-line"></i> Lokasi: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  }, () => {
+    document.getElementById('lokasiPatroli').innerHTML = `<i class="ri-error-warning-line"></i> Gagal dapat lokasi`;
+    showToast('GPS tidak aktif', 'error');
+  });
+}
+
+async function startCameraPatroli() {
+  try {
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('cameraPatroli');
+    video.srcObject = absenStream;
+    video.classList.remove('hidden');
+    document.getElementById('btnBukaKamera').classList.add('hidden');
+    document.getElementById('btnCapturePatroli').classList.remove('hidden');
+  } catch (err) {
+    showToast('Kamera error: ' + err.message, 'error');
+  }
+}
+
+function ambilFotoPatroli() {
+  const video = document.getElementById('cameraPatroli');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  patroliFoto = canvas.toDataURL('image/jpeg', 0.8);
+  const preview = document.getElementById('previewPatroli');
+  preview.src = patroliFoto;
+  preview.classList.remove('hidden');
+  video.classList.add('hidden');
+  document.getElementById('btnCapturePatroli').classList.add('hidden');
+  document.getElementById('btnSubmitPatroli').disabled = false;
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  showToast('Foto berhasil diambil!', 'success');
+}
+
+async function submitPatroli() {
+  const selectPos = document.getElementById('selectPos');
+  const posId = selectPos.value;
+  const posNama = selectPos.options[selectPos.selectedIndex].text;
+  const ket = document.getElementById('ketPatroli').value;
+  const btn = document.getElementById('btnSubmitPatroli');
+
+  if (!posId) {
+    showToast('Pilih pos patroli dulu!', 'error');
+    return;
+  }
+  if (!patroliFoto) {
+    showToast('Ambil foto bukti dulu!', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Mengirim...';
+
+  let lat = null, lon = null;
+  await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      resolve();
+    }, () => resolve());
+  });
+
+  const res = await apiCall('submit_patroli', {
+    nama: currentUser.Nama.trim(),
+    pos: posNama,
+    foto: patroliFoto,
+    latitude: lat,
+    longitude: lon,
+    keterangan: ket
+  });
+
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    setTimeout(() => renderPatroli(), 1000);
+  } else {
+    btn.disabled = false;
+    btn.innerText = 'Submit Check-in Pos';
+    showToast(res.msg, 'error');
+  }
+}
+
+// --- LAPOR KEJADIAN ---
+async function renderLaporKejadian() {
+  stopAllStreams();
+  kejadianFoto = null;
+  app.innerHTML = `
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderPatroli()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
+    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Lapor Kejadian</h1>
+  </div>
+  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div class="bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-2xl p-5 shadow-xl mb-4">
+      <div class="flex items-center gap-3 mb-2">
+        <i class="ri-alarm-warning-line text-4xl"></i>
+        <div>
+          <p class="font-bold text-lg">Laporan Darurat</p>
+          <p class="text-xs opacity-80">Laporkan kejadian mencurigakan</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Kejadian</label>
+        <select id="jenisKejadian" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg font-semibold focus:border-orange-500 focus:outline-none">
+          <option value="">-- Pilih Jenis --</option>
+          <option value="Tamu Mencurigakan">Tamu Mencurigakan</option>
+          <option value="Kerusakan Fasilitas">Kerusakan Fasilitas</option>
+          <option value="Kebakaran">Kebakaran</option>
+          <option value="Pencurian">Pencurian</option>
+          <option value="Keributan">Keributan</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tingkat Urgensi</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setUrgensi('Rendah')" id="urgensiRendah" class="p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition">Rendah</button>
+          <button onclick="setUrgensi('Sedang')" id="urgensiSedang" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Sedang</button>
+          <button onclick="setUrgensi('Tinggi')" id="urgensiTinggi" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Tinggi</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Deskripsi Kejadian</label>
+        <textarea id="deskripsiKejadian" placeholder="Jelaskan kronologi kejadian..." class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-orange-500 focus:outline-none" rows="4"></textarea>
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Bukti</label>
+        <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden">
+          <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+          <img id="previewKejadian" class="w-full h-full object-cover hidden" />
+          <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+            <i class="ri-camera-line text-4xl"></i>
+            <p class="text-sm font-semibold">Tap untuk buka kamera</p>
+          </button>
+          <button onclick="ambilFotoKejadian()" id="btnCaptureKejadian" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
+            <i class="ri-camera-fill"></i> Ambil Foto
+          </button>
+        </div>
+      </div>
+
+      <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">
+        <i class="ri-send-plane-fill"></i> Kirim Laporan
+      </button>
+    </div>
+  </div>
+  ${renderBottomNav('home')}
+  `;
+  applyDarkMode();
+  window.urgensiKejadian = 'Rendah';
+}
+
+function setUrgensi(level) {
+  urgensiKejadian = level;
+  document.getElementById('urgensiRendah').className = level === 'Rendah'?
+    'p-3 rounded-lg border-2 border-green-500 bg-green-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+  document.getElementById('urgensiSedang').className = level === 'Sedang'?
+    'p-3 rounded-lg border-2 border-yellow-500 bg-yellow-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+  document.getElementById('urgensiTinggi').className = level === 'Tinggi'?
+    'p-3 rounded-lg border-2 border-red-500 bg-red-500 text-white font-bold active:scale-95 transition' :
+    'p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition';
+}
+
+async function startCameraKejadian() {
+  try {
+    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('cameraKejadian');
+    video.srcObject = absenStream;
+    video.classList.remove('hidden');
+    document.getElementById('btnBukaKameraKejadian').classList.add('hidden');
+    document.getElementById('btnCaptureKejadian').classList.remove('hidden');
+  } catch (err) {
+    showToast('Kamera error: ' + err.message, 'error');
+  }
+}
+
+function ambilFotoKejadian() {
+  const video = document.getElementById('cameraKejadian');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  kejadianFoto = canvas.toDataURL('image/jpeg', 0.8);
+  const preview = document.getElementById('previewKejadian');
+  preview.src = kejadianFoto;
+  preview.classList.remove('hidden');
+  video.classList.add('hidden');
+  document.getElementById('btnCaptureKejadian').classList.add('hidden');
+  if (absenStream) {
+    absenStream.getTracks().forEach(track => track.stop());
+    absenStream = null;
+  }
+  showToast('Foto berhasil diambil!', 'success');
+}
+
+async function submitKejadian() {
+  const jenis = document.getElementById('jenisKejadian').value;
+  const deskripsi = document.getElementById('deskripsiKejadian').value;
+  const btn = document.getElementById('btnSubmitKejadian');
+
+  if (!jenis) {
+    showToast('Pilih jenis kejadian dulu!', 'error');
+    return;
+  }
+  if (!deskripsi) {
+    showToast('Isi deskripsi kejadian!', 'error');
+    return;
+  }
+  if (!kejadianFoto) {
+    showToast('Ambil foto bukti dulu!', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
+
+  let lat = null, lon = null;
+  await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      resolve();
+    }, () => resolve());
+  });
+
+  const res = await apiCall('lapor_kejadian', {
+    nama: currentUser.Nama.trim(),
+    jenis: jenis,
+    deskripsi: deskripsi,
+    urgensi: urgensiKejadian,
+    foto: kejadianFoto,
+    latitude: lat,
+    longitude: lon
+  });
+
+  if (res.status === 'success') {
+    showToast(res.msg, 'success');
+    setTimeout(() => renderPatroli(), 1000);
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Kirim Laporan';
+    showToast(res.msg, 'error');
+  }
+}
+
 async function renderDarurat() {
   stopAllStreams();
   app.innerHTML = `
@@ -1102,8 +1310,10 @@ async function renderDarurat() {
   ${renderBottomNav('home')}
   `;
   applyDarkMode();
+  
   const res = await apiCall('get_kontak_darurat', { unit: currentUser.Unit_Kerja });
   const listEl = document.getElementById('listDarurat');
+  
   if (res.status === 'success' && res.data.length > 0) {
     listEl.innerHTML = res.data.map(k => `
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
@@ -1129,13 +1339,9 @@ async function renderDarurat() {
   }
 }
 
-function comingSoon() {
-  showToast('Fitur Izin segera hadir', 'warning');
-}
-
-// INIT
+// --- INIT ---
 (function init() {
   applyDarkMode();
   currentUser? renderHome() : renderLogin();
 })();
-// === AKHIR BAGIAN 4 ===
+// --- AKHIR BAGIAN 4 ---
