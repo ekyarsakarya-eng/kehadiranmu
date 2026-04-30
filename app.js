@@ -2,6 +2,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
 const LOGO_APP = 'logo.png';
 const APP_NAME = 'ABSENSI KEHADIRAN TERPADU';
+const APP_COMPANY = 'PT. Security System';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
@@ -53,7 +54,7 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // sebelumnya =!isDarkMode
+  isDarkMode =!isDarkMode; // FIXED: sebelumnya =!isDarkMode
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderHome();
@@ -74,6 +75,7 @@ function showToast(msg, type = 'success') {
     setTimeout(() => toast.remove(), 200);
   }, 2000);
 }
+
 async function apiCall(action, payload = {}) {
   try {
     const res = await fetch(API_URL, {
@@ -135,7 +137,6 @@ function renderLogin() {
             <i class="ri-user-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input id="loginNik" type="text" placeholder="Masukkan ID Anda" class="w-full pl-12 pr-4 py-4 rounded-xl border-white/20 bg-white/5 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#800000] focus:outline-none transition text-lg">
           </div>
-        </div>
         <div class="mb-6">
           <label class="block text-sm font-bold text-gray-200 mb-2">Password</label>
           <div class="relative">
@@ -146,15 +147,14 @@ function renderLogin() {
             </button>
           </div>
         </div>
+        <p id="err" class="text-red-400 text-sm mb-4 text-center font-semibold"></p>
         <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">Masuk</button>
       </div>
       <p class="text-center text-gray-500 text-xs mt-6">© 2025 ${APP_COMPANY}</p>
     </div>
-  </div>
   `;
 }
 
-// Tambah fungsi baru ini di bawah renderLogin
 function togglePasswordVisibility() {
   const passInput = document.getElementById('loginPass');
   const iconMata = document.getElementById('iconMata');
@@ -167,12 +167,13 @@ function togglePasswordVisibility() {
   }
 }
 
-async function login() {
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
+async function handleLogin() {
+  const username = document.getElementById('loginNik').value;
+  const password = document.getElementById('loginPass').value;
   const errEl = document.getElementById('err');
   if (!username ||!password) {
     showToast('Username & Password wajib diisi', 'error');
+    errEl.innerText = 'Username & Password wajib diisi';
     return;
   }
   errEl.innerText = 'Login...';
@@ -260,7 +261,6 @@ async function renderHome() {
       <div class="min-w-0 flex-1 overflow-hidden">
         <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
       </div>
-    </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
@@ -280,7 +280,7 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
-    
+
     <div id="statusCard" class="bg-gray-300 text-white rounded-2xl p-4 shadow-lg mb-4 animate-pulse">
       <div class="flex items-center gap-3">
         <i class="ri-loader-4-line text-3xl animate-spin"></i>
@@ -290,7 +290,7 @@ async function renderHome() {
         </div>
       </div>
     </div>
-    
+
     <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
@@ -301,9 +301,8 @@ async function renderHome() {
                 <p class="font-bold text-lg truncate">${currentUser.Nama}</p>
                 <p class="text-xs opacity-80">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
               </div>
-            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
-              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex flex-col items-center">
+              <button onclick="quickAbsen('IN')" class="bg-white/20 backdrop-blur-sm rounded-xl p-4 active:scale-95 transition flex-col items-center">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
                 <p class="font-bold text-sm">Absen Masuk</p>
               </button>
@@ -342,7 +341,7 @@ async function renderHome() {
       </div>
       <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
     </div>
-    
+
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
@@ -372,7 +371,6 @@ async function renderHome() {
         </button>
       </div>
     </div>
-  </div>
   ${renderBottomNav('home')}
   `;
   applyDarkMode();
@@ -611,7 +609,6 @@ async function renderPatroli() {
           <p class="font-bold text-lg">Checklist Patroli</p>
           <p class="text-xs opacity-80">Pilih pos & upload bukti foto</p>
         </div>
-      </div>
       <div id="lokasiPatroli" class="text-sm mb-3 bg-white/20 backdrop-blur-sm rounded-lg p-2">
         <i class="ri-map-pin-line"></i> Mendeteksi lokasi...
       </div>
@@ -639,7 +636,7 @@ async function renderPatroli() {
         <i class="ri-check-line"></i> Submit Check-in Pos
       </button>
     </div>
-        <button onclick="renderLaporKejadian()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+    <button onclick="renderLaporKejadian()" class="w-full bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
       <i class="ri-alarm-warning-line text-xl"></i> Lapor Kejadian Darurat
     </button>
   </div>
@@ -757,7 +754,6 @@ async function renderLaporKejadian() {
           <p class="text-xs opacity-80">Laporkan kejadian mencurigakan</p>
         </div>
       </div>
-    </div>
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
       <div>
         <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Kejadian</label>
@@ -778,7 +774,6 @@ async function renderLaporKejadian() {
           <button onclick="setUrgensi('Sedang')" id="urgensiSedang" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Sedang</button>
           <button onclick="setUrgensi('Tinggi')" id="urgensiTinggi" class="p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-bold active:scale-95 transition">Tinggi</button>
         </div>
-      </div>
       <div>
         <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Deskripsi Kejadian</label>
         <textarea id="deskripsiKejadian" placeholder="Jelaskan kronologi kejadian..." class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-lg focus:border-orange-500 focus:outline-none" rows="4"></textarea>
@@ -1035,7 +1030,6 @@ function renderAccount() {
       <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
       <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
     </div>
-  </div>
   ${renderBottomNav('account')}
   `;
   applyDarkMode();
@@ -1092,7 +1086,6 @@ async function renderDarurat() {
           <p class="text-xs opacity-80">Telpon atau WA langsung</p>
         </div>
       </div>
-    </div>
     <div id="listDarurat" class="space-y-3">
       <div class="text-center py-8 text-gray-400">
         <i class="ri-loader-4-line animate-spin text-3xl"></i>
