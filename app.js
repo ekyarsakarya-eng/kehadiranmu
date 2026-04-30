@@ -2,7 +2,6 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
 const LOGO_APP = 'logo.png';
 const APP_NAME = 'ABSENSI KEHADIRAN TERPADU';
-const APP_COMPANY = 'PT. Security System';
 const app = document.getElementById('app');
 let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
 let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
@@ -128,7 +127,7 @@ function renderLogin() {
           <i class="ri-shield-keyhole-fill text-white text-6xl"></i>
         </div>
         <h1 class="text-4xl font-extrabold text-white tracking-tight font-header text-center">${APP_NAME}</h1>
-        <p class="text-gray-400 text-sm mt-2">${APP_COMPANY}</p>
+        <p class="text-gray-400 text-sm mt-2">Sistem Absensi Digital</p>
       </div>
       <div class="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
         <div class="mb-6">
@@ -150,7 +149,7 @@ function renderLogin() {
         <p id="err" class="text-red-400 text-sm mb-4 text-center font-semibold"></p>
         <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">Masuk</button>
       </div>
-      <p class="text-center text-gray-500 text-xs mt-6">© 2025 ${APP_COMPANY}</p>
+      <p class="text-center text-gray-500 text-xs mt-6">© 2025 Absensi Kehadiran Terpadu</p>
     </div>
   `;
 }
