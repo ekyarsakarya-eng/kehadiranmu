@@ -1,9 +1,16 @@
+// === BAGIAN 1: INIT, LOGIN, UTILS ===
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
 const app = document.getElementById('app');
 let currentAdmin = JSON.parse(sessionStorage.getItem('admin') || 'null');
 let isSuper = false;
 let allUser = [];
 let rekapData = [];
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
 
 async function apiCall(action, payload = {}) {
   try {
@@ -61,49 +68,55 @@ async function loginAdmin() {
   }
 }
 
+function getSidebar(active) {
+  return `
+  <div class="w-64 bg-[#800000] text-white p-4 flex flex-col">
+    <div class="mb-8">
+      <h1 class="font-header font-extrabold text-xl">${isSuper? 'SUPER ADMIN' : 'ADMIN'}</h1>
+      <p class="text-xs opacity-80">${isSuper? 'Semua Unit' : escapeHtml(currentAdmin.Unit_Kerja)}</p>
+    </div>
+    <nav class="flex-1 space-y-2">
+      <button onclick="renderDashboard()" class="w-full text-left p-3 rounded-lg ${active==='dashboard'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
+        <i class="ri-dashboard-line text-xl"></i> Dashboard
+      </button>
+      <button onclick="renderDataAbsensi()" class="w-full text-left p-3 rounded-lg ${active==='absensi'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
+        <i class="ri-file-list-3-line text-xl"></i> Data Absensi
+      </button>
+      <button onclick="renderKelolaUser()" class="w-full text-left p-3 rounded-lg ${active==='user'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
+        <i class="ri-team-line text-xl"></i> Kelola User
+      </button>
+      ${isSuper? `
+      <button onclick="renderKelolaPos()" class="w-full text-left p-3 rounded-lg ${active==='pos'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
+        <i class="ri-building-line text-xl"></i> Kelola Pos
+      </button>
+      <button onclick="renderSetting()" class="w-full text-left p-3 rounded-lg ${active==='setting'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
+        <i class="ri-settings-3-line text-xl"></i> Setting
+      </button>
+      ` : ''}
+    </nav>
+    <button onclick="logoutAdmin()" class="p-3 rounded-lg bg-red-600 hover:bg-red-700 flex items-center gap-3">
+      <i class="ri-logout-box-line text-xl"></i> Logout
+    </button>
+  </div>`;
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem('admin');
+  currentAdmin = null;
+  renderLoginAdmin();
+}
+// === AKHIR BAGIAN 1 ===
+// === BAGIAN 2: DASHBOARD & DATA ABSENSI ===
 async function renderDashboard() {
   const stats = await apiCall('get_admin_stats', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
-  
   app.innerHTML = `
   <div class="flex h-screen">
-    <!-- Sidebar -->
-    <div class="w-64 bg-[#800000] text-white p-4 flex flex-col">
-      <div class="mb-8">
-        <h1 class="font-header font-extrabold text-xl">${isSuper? 'SUPER ADMIN' : 'ADMIN'}</h1>
-        <p class="text-xs opacity-80">${isSuper? 'Semua Unit' : currentAdmin.Unit_Kerja}</p>
-      </div>
-      <nav class="flex-1 space-y-2">
-        <button onclick="renderDashboard()" class="w-full text-left p-3 rounded-lg bg-white/20 font-semibold flex items-center gap-3">
-          <i class="ri-dashboard-line text-xl"></i> Dashboard
-        </button>
-        <button onclick="renderDataAbsensi()" class="w-full text-left p-3 rounded-lg hover:bg-white/10 flex items-center gap-3">
-          <i class="ri-file-list-3-line text-xl"></i> Data Absensi
-        </button>
-        <button onclick="renderKelolaUser()" class="w-full text-left p-3 rounded-lg hover:bg-white/10 flex items-center gap-3">
-          <i class="ri-team-line text-xl"></i> Kelola User
-        </button>
-        ${isSuper? `
-        <button onclick="renderKelolaPos()" class="w-full text-left p-3 rounded-lg hover:bg-white/10 flex items-center gap-3">
-          <i class="ri-building-line text-xl"></i> Kelola Pos
-        </button>
-        <button onclick="renderSetting()" class="w-full text-left p-3 rounded-lg hover:bg-white/10 flex items-center gap-3">
-          <i class="ri-settings-3-line text-xl"></i> Setting
-        </button>
-        ` : ''}
-      </nav>
-      <button onclick="logoutAdmin()" class="p-3 rounded-lg bg-red-600 hover:bg-red-700 flex items-center gap-3">
-        <i class="ri-logout-box-line text-xl"></i> Logout
-      </button>
-    </div>
-
-    <!-- Main Content -->
+    ${getSidebar('dashboard')}
     <div class="flex-1 p-8 overflow-auto">
       <div class="mb-6">
         <h2 class="font-header font-bold text-3xl text-gray-800 dark:text-white">Dashboard</h2>
         <p class="text-gray-500">Ringkasan data hari ini</p>
       </div>
-
-      <!-- Stats Cards -->
       <div class="grid grid-cols-4 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
           <div class="flex items-center justify-between mb-2">
@@ -134,8 +147,6 @@ async function renderDashboard() {
           <p class="text-3xl font-bold text-gray-800 dark:text-white">${stats.kejadian || 0}</p>
         </div>
       </div>
-
-      <!-- Chart -->
       <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
         <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Grafik Kehadiran 7 Hari Terakhir</h3>
         <canvas id="chartHadir" height="80"></canvas>
@@ -143,7 +154,6 @@ async function renderDashboard() {
     </div>
   </div>
   `;
-  
   loadChart();
 }
 
@@ -171,7 +181,6 @@ async function renderDataAbsensi() {
   const today = new Date().toISOString().split('T')[0];
   const res = await apiCall('get_rekap_admin', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja, bulan: today.substring(0,7) });
   rekapData = res.data || [];
-  
   app.innerHTML = `
   <div class="flex h-screen">
     ${getSidebar('absensi')}
@@ -185,8 +194,6 @@ async function renderDataAbsensi() {
           <i class="ri-file-excel-2-line"></i> Export Excel
         </button>
       </div>
-
-      <!-- Filter -->
       <div class="bg-white p-4 rounded-xl shadow mb-6 flex gap-4">
         <input type="date" id="filterTgl" value="${today}" class="border-2 border-gray-200 p-2 rounded-lg">
         <select id="filterUnit" class="border-2 border-gray-200 p-2 rounded-lg ${isSuper? '' : 'hidden'}">
@@ -194,8 +201,6 @@ async function renderDataAbsensi() {
         </select>
         <button onclick="loadRekapFilter()" class="bg-[#800000] text-white px-6 py-2 rounded-lg font-bold">Filter</button>
       </div>
-
-      <!-- Table -->
       <div class="bg-white rounded-xl shadow overflow-hidden">
         <table class="w-full">
           <thead class="bg-gray-50">
@@ -222,18 +227,26 @@ function renderTabelRekap(data) {
   if (data.length === 0) return '<tr><td colspan="6" class="p-8 text-center text-gray-400">Tidak ada data</td></tr>';
   return data.map(r => `
     <tr class="border-b hover:bg-gray-50">
-      <td class="p-4 text-sm">${r.Tanggal}</td>
-      <td class="p-4 font-semibold">${r.Nama}</td>
-      <td class="p-4 text-sm">${r.Unit_Kerja || '-'}</td>
-      <td class="p-4 text-sm">${r['Jam Masuk'] || '-'}</td>
-      <td class="p-4 text-sm">${r['Jam Pulang'] || '-'}</td>
+      <td class="p-4 text-sm">${escapeHtml(r.Tanggal)}</td>
+      <td class="p-4 font-semibold">${escapeHtml(r.Nama)}</td>
+      <td class="p-4 text-sm">${escapeHtml(r.Unit_Kerja || '-')}</td>
+      <td class="p-4 text-sm">${escapeHtml(r['Jam Masuk'] || '-')}</td>
+      <td class="p-4 text-sm">${escapeHtml(r['Jam Pulang'] || '-')}</td>
       <td class="p-4">
         <span class="px-3 py-1 rounded-full text-xs font-bold ${r.Status === 'Hadir'? 'bg-green-100 text-green-700' : r.Status === 'Terlambat'? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}">
-          ${r.Status}
+          ${escapeHtml(r.Status)}
         </span>
       </td>
     </tr>
   `).join('');
+}
+
+async function loadRekapFilter() {
+  const tgl = document.getElementById('filterTgl').value;
+  const unit = document.getElementById('filterUnit')? document.getElementById('filterUnit').value : 'all';
+  const res = await apiCall('get_rekap_admin', { unit: isSuper? unit : currentAdmin.Unit_Kerja, bulan: tgl.substring(0,7) });
+  rekapData = res.data || [];
+  document.getElementById('tabelRekap').innerHTML = renderTabelRekap(rekapData);
 }
 
 function exportExcel() {
@@ -243,11 +256,11 @@ function exportExcel() {
   XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
   showToast('Excel berhasil didownload!', 'success');
 }
-
+// === AKHIR BAGIAN 2 ===
+// === BAGIAN 3: KELOLA USER & INIT ===
 async function renderKelolaUser() {
   const res = await apiCall('get_all_user', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
   allUser = res.data || [];
-  
   app.innerHTML = `
   <div class="flex h-screen">
     ${getSidebar('user')}
@@ -261,7 +274,6 @@ async function renderKelolaUser() {
           <i class="ri-user-add-line"></i> Tambah User
         </button>
       </div>
-
       <div class="bg-white rounded-xl shadow overflow-hidden">
         <table class="w-full">
           <thead class="bg-gray-50">
@@ -277,11 +289,11 @@ async function renderKelolaUser() {
           <tbody>
             ${allUser.map(u => `
               <tr class="border-b hover:bg-gray-50">
-                <td class="p-4 text-sm">${u.NIP || '-'}</td>
-                <td class="p-4 font-semibold">${u.Nama}</td>
-                <td class="p-4 text-sm">${u.Jabatan || '-'}</td>
-                <td class="p-4 text-sm">${u.Unit_Kerja || '-'}</td>
-                <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">${u.Role || 'Satpam'}</span></td>
+                <td class="p-4 text-sm">${escapeHtml(u.NIP || '-')}</td>
+                <td class="p-4 font-semibold">${escapeHtml(u.Nama)}</td>
+                <td class="p-4 text-sm">${escapeHtml(u.Jabatan || '-')}</td>
+                <td class="p-4 text-sm">${escapeHtml(u.Unit_Kerja || '-')}</td>
+                <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">${escapeHtml(u.Role || 'Satpam')}</span></td>
                 <td class="p-4 text-center">
                   <button onclick="editUser('${u.NIP}')" class="text-blue-600 hover:text-blue-800 mr-3"><i class="ri-edit-line text-xl"></i></button>
                   <button onclick="hapusUser('${u.NIP}')" class="text-red-600 hover:text-red-800"><i class="ri-delete-bin-line text-xl"></i></button>
@@ -293,8 +305,6 @@ async function renderKelolaUser() {
       </div>
     </div>
   </div>
-  
-  <!-- Modal Tambah/Edit User -->
   <div id="modalUser" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 w-full max-w-md">
       <h3 class="font-header font-bold text-xl mb-4" id="modalTitle">Tambah User</h3>
@@ -317,38 +327,6 @@ async function renderKelolaUser() {
     </div>
   </div>
   `;
-}
-
-function getSidebar(active) {
-  return `
-  <div class="w-64 bg-[#800000] text-white p-4 flex flex-col">
-    <div class="mb-8">
-      <h1 class="font-header font-extrabold text-xl">${isSuper? 'SUPER ADMIN' : 'ADMIN'}</h1>
-      <p class="text-xs opacity-80">${isSuper? 'Semua Unit' : currentAdmin.Unit_Kerja}</p>
-    </div>
-    <nav class="flex-1 space-y-2">
-      <button onclick="renderDashboard()" class="w-full text-left p-3 rounded-lg ${active==='dashboard'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
-        <i class="ri-dashboard-line text-xl"></i> Dashboard
-      </button>
-      <button onclick="renderDataAbsensi()" class="w-full text-left p-3 rounded-lg ${active==='absensi'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
-        <i class="ri-file-list-3-line text-xl"></i> Data Absensi
-      </button>
-      <button onclick="renderKelolaUser()" class="w-full text-left p-3 rounded-lg ${active==='user'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
-        <i class="ri-team-line text-xl"></i> Kelola User
-      </button>
-      ${isSuper? `
-      <button onclick="renderKelolaPos()" class="w-full text-left p-3 rounded-lg ${active==='pos'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
-        <i class="ri-building-line text-xl"></i> Kelola Pos
-      </button>
-      <button onclick="renderSetting()" class="w-full text-left p-3 rounded-lg ${active==='setting'?'bg-white/20 font-semibold':'hover:bg-white/10'} flex items-center gap-3">
-        <i class="ri-settings-3-line text-xl"></i> Setting
-      </button>
-      ` : ''}
-    </nav>
-    <button onclick="logoutAdmin()" class="p-3 rounded-lg bg-red-600 hover:bg-red-700 flex items-center gap-3">
-      <i class="ri-logout-box-line text-xl"></i> Logout
-    </button>
-  </div>`;
 }
 
 function showModalUser(user = null) {
@@ -386,7 +364,7 @@ async function saveUser() {
     showToast('Nama & Username wajib diisi', 'error');
     return;
   }
-  const action = document.getElementById('editNIP').value? 'update_user' : 'add_user';
+  const action = document.getElementById('editNIP').value? 'update_user_admin' : 'add_user';
   const res = await apiCall(action, { user: data });
   if (res.status === 'success') {
     showToast('User berhasil disimpan!', 'success');
@@ -411,22 +389,11 @@ function editUser(nip) {
   showModalUser(user);
 }
 
-function logoutAdmin() {
-  sessionStorage.removeItem('admin');
-  currentAdmin = null;
-  renderLoginAdmin();
-}
-
 function renderKelolaPos() { showToast('Fitur Kelola Pos segera hadir', 'warning'); }
 function renderSetting() { showToast('Fitur Setting segera hadir', 'warning'); }
-function renderAdminLog() { showToast('Fitur Log segera hadir', 'warning'); }
-function renderAdminBroadcast() { showToast('Fitur Broadcast segera hadir', 'warning'); }
-function renderAdminAbsensi() { showToast('Fitur Data Absensi segera hadir', 'warning'); }
-function renderAdminPatroli() { showToast('Fitur Data Patroli segera hadir', 'warning'); }
-function renderAdminKejadian() { showToast('Fitur Kejadian segera hadir', 'warning'); }
 
-// Init
 (function init() {
   if (currentAdmin) renderDashboard();
   else renderLoginAdmin();
 })();
+// === AKHIR BAGIAN 3 ===
