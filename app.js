@@ -1267,41 +1267,68 @@ function loadMoreRekap() {
   renderRekapPage(false);
 }
 
-function renderAccount() {
-  stopAllStreams();
-  let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
-  foto = foto.replace(/\s/g, '');
-  if (foto.includes('uc?export=view&id=')) {
-    const fileId = foto.split('id=')[1].split('&')[0];
-    foto = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-  if (foto.includes('drive.google.com')) {
-    foto += (foto.includes('?')? '&' : '?') + 'v=' + Date.now();
-  }
+function renderGantiPassword() {
   app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 text-center sticky top-0 z-50"><h1 class="text-xl font-bold text-gray-900 dark:text-white">Account</h1></div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] rounded-2xl shadow-xl p-6 text-center mb-4 text-white">
-      <img id="previewFoto" src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover bg-white p-1 shadow-lg"
-           onerror="this.src='https://placehold.co/96x96/800000/FFFFFF?text=U'">
-      <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="previewFoto(event)">
-      <button onclick="document.getElementById('fotoInput').click()" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition">Ganti Foto</button>
-      <p class="font-bold text-lg mt-3">${currentUser.Nama}</p>
-      <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.NIP || '-'}</p>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 space-y-3">
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Nama</label><input id="Nama" value="${currentUser.Nama || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">NIP</label><input id="NIP" value="${currentUser.NIP || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 bg-gray-100 dark:bg-gray-900" disabled></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Jabatan</label><input id="Jabatan" value="${currentUser.Jabatan || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Unit Kerja</label><input id="Unit_Kerja" value="${currentUser.Unit_Kerja || ''}" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <div><label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Password Baru</label><input id="Password" type="password" placeholder="Kosongkan jika tidak ganti" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mt-1 focus:border-[#800000] focus:outline-none"></div>
-      <button onclick="saveAccount()" class="w-full text-white p-3 rounded-xl font-bold mt-2 bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Simpan Perubahan</button>
-      <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold shadow-lg active:scale-95 transition">Logout</button>
-    </div>
+  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
+    <button onclick="renderAccount()"><i class="ri-arrow-left-s-line text-2xl"></i></button>
+    <h1 class="text-xl font-bold">Ganti Password</h1>
   </div>
-  ${renderBottomNav('account')}
-  `;
+  <div class="p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 space-y-4 shadow-sm">
+      
+      <!-- Password Lama -->
+      <div>
+        <label class="text-sm text-gray-500">Password Lama</label>
+        <div class="relative mt-1">
+          <input id="oldPass" type="password" class="w-full border-2 border-gray-300 dark:border-gray-600 bg-transparent p-3 pr-12 rounded-xl">
+          <button type="button" onclick="togglePass('oldPass', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <i class="ri-eye-off-line text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Password Baru -->
+      <div>
+        <label class="text-sm text-gray-500">Password Baru</label>
+        <div class="relative mt-1">
+          <input id="newPass" type="password" class="w-full border-2 border-gray-300 dark:border-gray-600 bg-transparent p-3 pr-12 rounded-xl">
+          <button type="button" onclick="togglePass('newPass', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <i class="ri-eye-off-line text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ulangi Password -->
+      <div>
+        <label class="text-sm text-gray-500">Ulangi Password Baru</label>
+        <div class="relative mt-1">
+          <input id="newPass2" type="password" class="w-full border-2 border-gray-300 dark:border-gray-600 bg-transparent p-3 pr-12 rounded-xl">
+          <button type="button" onclick="togglePass('newPass2', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <i class="ri-eye-off-line text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <button onclick="submitGantiPassword()" class="w-full bg-[#800000] text-white p-3 rounded-xl font-bold active:scale-95">
+        Simpan Password Baru
+      </button>
+    </div>
+  </div>`;
   applyDarkMode();
+}
+
+// Fungsi toggle mata - taruh di luar renderGantiPassword
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const icon = btn.querySelector('i');
+
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'ri-eye-line text-xl';
+  } else {
+    input.type = 'password';
+    icon.className = 'ri-eye-off-line text-xl';
+  }
 }
 
 function previewFoto(event) {
