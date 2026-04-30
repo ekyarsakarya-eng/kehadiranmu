@@ -296,10 +296,11 @@ async function renderHome() {
                 <p id="statAlpa" class="text-3xl font-bold text-red-600 dark:text-red-400">-</p>
                 <p class="text-xs opacity-90 mt-1">Alpha</p>
               </div>
-            </div>
+           </div>
             <button onclick="renderRekap()" class="w-full bg-[#800000] text-white py-3 rounded-xl font-bold active:scale-95 transition">Lihat Detail Rekap</button>
           </div>
         </div>
+      </div> <!-- TAMBAH INI: nutup swipeContainer -->
       <div class="flex justify-center gap-2 mt-3">
         <button onclick="swipeCard(0)" id="dot-0" class="w-2 h-2 rounded-full bg-[#800000] transition"></button>
         <button onclick="swipeCard(1)" id="dot-1" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition"></button>
