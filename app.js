@@ -249,6 +249,7 @@ async function renderHome() {
       <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header"></p>
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
+    
     <div id="statusCard" class="bg-gray-300 text-white rounded-2xl p-4 shadow-lg mb-4 animate-pulse">
       <div class="flex items-center gap-3">
         <i class="ri-loader-4-line text-3xl animate-spin"></i>
@@ -258,6 +259,7 @@ async function renderHome() {
         </div>
       </div>
     </div>
+    
     <div class="relative overflow-hidden rounded-2xl mb-4" id="swipeWrapper">
       <div id="swipeContainer" class="flex transition-transform duration-300 touch-pan-y" style="transform: translateX(0%);">
         <div class="w-full flex-shrink-0">
@@ -281,6 +283,7 @@ async function renderHome() {
             </div>
             <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-xl font-bold active:scale-95 transition">Buka Kamera Absen</button>
           </div>
+        </div>
         <div class="w-full flex-shrink-0">
           <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl p-5 shadow-xl">
             <p class="font-bold text-lg mb-4">Statistik Bulan Ini</p>
@@ -308,6 +311,7 @@ async function renderHome() {
       </div>
       <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2"><i class="ri-drag-move-line"></i> Geser untuk lihat statistik</p>
     </div>
+    
     <div class="mt-6">
       <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Tugas</p>
       <div class="grid grid-cols-4 gap-3">
