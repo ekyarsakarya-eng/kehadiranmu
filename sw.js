@@ -15,16 +15,24 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => {
-    return Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-  }));
+  e.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    })
+  );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  
+  // Jangan cache Google Script API
+  if (e.request.url.includes('script.google.com')) return;
+  
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('./index.html')))
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => {
+      if (e.request.mode === 'navigate') return caches.match('./index.html');
+    }))
   );
 });
 
@@ -36,9 +44,10 @@ async function syncAbsenData() {
   const db = await openDB();
   const tx = db.transaction('absen_queue', 'readonly');
   const allData = await tx.objectStore('absen_queue').getAll();
+  
   for (const data of allData) {
     try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbzvggk-r3j4Njzhjkf8_G3EtIsdzjp3vbNtCIbVI3kerscbyRUBbl1OLOX04tQsRxQ9/exec', {
+      const res = await fetch('https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec', {
         method: 'POST',
         body: JSON.stringify(data.payload),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
@@ -47,9 +56,17 @@ async function syncAbsenData() {
       if (result.status === 'success') {
         const delTx = db.transaction('absen_queue', 'readwrite');
         await delTx.objectStore('absen_queue').delete(data.id);
-        self.registration.showNotification('Data Terkirim', { body: `Absen ${data.payload.nama} berhasil sync`, icon: '/logo.png' });
+        
+        // Cek permission dulu sebelum show notif
+        const permission = await self.registration.pushManager.permissionState({userVisibleOnly: true});
+        if (permission === 'granted') {
+          self.registration.showNotification('Data Terkirim', { 
+            body: `Absen ${data.payload.nama} berhasil sync`, 
+            icon: './logo.png' 
+          }).catch(()=>{});
+        }
       }
-    } catch (e) {}
+    } catch (e) { console.log('Sync error:', e); }
   }
 }
 
