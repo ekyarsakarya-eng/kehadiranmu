@@ -10,14 +10,13 @@ let isDarkMode = localStorage.getItem('darkMode') === 'true';
 let absenFoto = null;
 let absenTipe = 'IN';
 let currentLokasi = null;
-let currentCard = 0;
-let startX = 0;
-let currentX = 0;
-let isDragging = false;
 let globalJamPulang = '-';
 let patroliFoto = null;
 let kejadianFoto = null;
 let urgensiKejadian = 'Rendah';
+let rekapDataCache = [];
+let rekapPage = 0;
+const REKAP_PER_PAGE = 10;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -46,7 +45,7 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // sebelumnya =!isDarkMode
+  isDarkMode = !isDarkMode; // FIX TYPO
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderHome();
@@ -118,15 +117,35 @@ async function renderLogin() {
   }
   app.innerHTML = `
   <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
-      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-11/12 max-w-sm">
+      <img src="${LOGO_APP}" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover shadow-lg">
       <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">${APP_NAME}</h1>
-      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
-      <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
+
+      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 rounded-2xl mb-3 focus:border-[#800000] focus:outline-none transition">
+
+      <div class="relative mb-3">
+        <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 pr-12 rounded-2xl focus:border-[#800000] focus:outline-none transition">
+        <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 active:scale-90">
+          <i id="iconPassword" class="ri-eye-off-line text-xl"></i>
+        </button>
+      </div>
+
+      <button onclick="login()" class="w-full text-white p-4 rounded-2xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
+      <p id="err" class="text-red-500 text-sm mt-3 text-center"></p>
     </div>
   </div>`;
+}
+
+function togglePassword() {
+  const input = document.getElementById('password');
+  const icon = document.getElementById('iconPassword');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'ri-eye-line text-xl';
+  } else {
+    input.type = 'password';
+    icon.className = 'ri-eye-off-line text-xl';
+  }
 }
 
 async function login() {
@@ -254,7 +273,6 @@ function ambilFotoAbsen() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  // Resize ke max 800px biar file kecil
   const maxSize = 800;
   let width = video.videoWidth;
   let height = video.videoHeight;
@@ -274,7 +292,6 @@ function ambilFotoAbsen() {
   canvas.height = height;
   ctx.drawImage(video, 0, 0, width, height);
   
-  // Kompres ke 0.6 = 60% quality, hasilnya ~100-200KB
   absenFoto = canvas.toDataURL('image/jpeg', 0.6);
   
   const preview = document.getElementById('previewAbsen');
@@ -290,6 +307,7 @@ function ambilFotoAbsen() {
   }
   showToast('Foto siap!', 'success');
 }
+
 async function submitAbsen() {
   if (!absenFoto) {
     showToast('Ambil foto dulu!', 'error');
@@ -299,7 +317,6 @@ async function submitAbsen() {
   btn.disabled = true;
   btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
   
-  // GPS dengan timeout 3 detik aja
   let lat = null, lon = null;
   try {
     const pos = await new Promise((resolve, reject) => {
@@ -322,60 +339,12 @@ async function submitAbsen() {
   
   if (res.status === 'success') {
     showToast(res.msg, 'success');
-    // Gak usah renderHome(), langsung balik aja
     setTimeout(() => renderHome(), 800);
   } else {
     btn.disabled = false;
     btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
     showToast(res.msg, 'error');
   }
-}
-// --- AKHIR BAGIAN 1---
-function cekStatusShift(dashboardRes) {
-  const jamPulang = dashboardRes.jamPulang || '-';
-  if (jamPulang === '-' || jamPulang === '00:00') return { bisaMasuk: true, info: '' };
-  const now = new Date();
-  const [jamP, menitP, detikP = 0] = jamPulang.split(':');
-  const waktuPulang = new Date();
-  waktuPulang.setHours(parseInt(jamP), parseInt(menitP), parseInt(detikP));
-  if (waktuPulang > now) waktuPulang.setDate(waktuPulang.getDate() - 1);
-  const bisaMasukLagi = new Date(waktuPulang.getTime() + 12 * 60 * 60 * 1000);
-  const selisihMs = bisaMasukLagi - now;
-  if (selisihMs <= 0) return { bisaMasuk: true, info: 'Siap untuk shift berikutnya!' };
-  const sisaJam = Math.floor(selisihMs / 3600000);
-  const sisaMenit = Math.floor((selisihMs % 3600000) / 60000);
-  const jamBuka = bisaMasukLagi.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  return { bisaMasuk: false, info: `Shift berikutnya: ${jamBuka}`, countdown: `${sisaJam}j ${sisaMenit}m`, jamPulang: jamPulang };
-}
-
-function initSwipeGesture() {
-  const wrapper = document.getElementById('swipeWrapper');
-  if (!wrapper) return;
-  wrapper.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    isDragging = true;
-  }, { passive: true });
-  wrapper.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    currentX = e.touches[0].clientX;
-  }, { passive: true });
-  wrapper.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    const diff = startX - currentX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0 && currentCard === 0) swipeCard(1);
-      else if (diff < 0 && currentCard === 1) swipeCard(0);
-    }
-  }, { passive: true });
-}
-
-function swipeCard(idx) {
-  currentCard = idx;
-  const container = document.getElementById('swipeContainer');
-  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
-  document.getElementById('dot-0').className = idx === 0? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
-  document.getElementById('dot-1').className = idx === 1? 'w-2 h-2 rounded-full bg-[#800000] transition' : 'w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 transition';
 }
 
 function startLiveClock() {
@@ -413,10 +382,12 @@ async function renderHome() {
       <div class="min-w-0 flex-1 overflow-hidden">
         <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
       </div>
+    </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
     </div>
+  </div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="mb-4">
       <div class="flex items-center justify-between mb-1">
@@ -449,12 +420,13 @@ async function renderHome() {
           <p class="font-bold text-lg truncate uppercase">${currentUser.Nama}</p>
           <p class="text-xs opacity-90">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
         </div>
+      </div>
       <div class="grid grid-cols-2 gap-3 mb-4">
-        <button onclick="quickAbsen('IN')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border border-white/20">
+        <button onclick="quickAbsen('IN')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border-white/20">
           <i class="ri-login-circle-line text-4xl mb-2"></i>
           <p class="font-bold text-sm">Absen Masuk</p>
         </button>
-        <button onclick="quickAbsen('OUT')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border border-white/20">
+        <button onclick="quickAbsen('OUT')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border-white/20">
           <i class="ri-logout-circle-r-line text-4xl mb-2"></i>
           <p class="font-bold text-sm">Absen Pulang</p>
         </button>
@@ -464,7 +436,6 @@ async function renderHome() {
       </button>
     </div>
 
-    <!-- CARD STATISTIK - FIX: TUTUP DIV YANG KURANG + ONCLICK JALAN -->
     <div onclick="renderRekap()" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 mb-4 active:scale-98 transition cursor-pointer">
       <div class="flex items-center justify-between mb-3">
         <p class="font-bold text-gray-800 dark:text-white">Statistik Bulan Ini</p>
@@ -569,6 +540,7 @@ async function renderHome() {
   });
 }
 
+// TARUH SEBELUM renderRekap
 function generateBulanOptions() {
   const now = new Date();
   let html = '';
@@ -659,7 +631,7 @@ async function loadRekapBulan() {
 
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
       <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
-        <div>M</div><div>S</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
+        <div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
       </div>
       <div class="grid grid-cols-7 gap-2">`;
 
@@ -765,7 +737,6 @@ function showDetailTanggal(day, status, idx) {
         <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
         <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
       </div>
-    </div>
     <div class="grid grid-cols-3 gap-3 text-center mb-3">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
@@ -795,13 +766,12 @@ function showDetailTanggal(day, status, idx) {
           ` : ''}
         </div>
       </div>
-    </div>
     ` : ''}
   `;
   el.classList.remove('hidden');
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
-// --- AKHIR BAGIAN 2 ---
+
 function renderAccount() {
   stopAllStreams();
   let foto = currentUser.URL_Logo || 'https://placehold.co/100x100/800000/FFFFFF?text=U';
@@ -874,311 +844,6 @@ async function saveAccount() {
   }
 }
 
-let rekapDataCache = [];
-let rekapPage = 0;
-const REKAP_PER_PAGE = 10;
-
-async function renderRekap() {
-  stopAllStreams();
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()" class="text-2xl text-gray-600 dark:text-gray-300"><i class="ri-arrow-left-line"></i></button>
-    <p class="font-bold text-lg text-gray-900 dark:text-white">Riwayat Absensi</p>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="mb-4">
-      <select id="filterBulan" onchange="loadRekapData()" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold">
-        ${generateBulanOptions()}
-      </select>
-    </div>
-    <div id="rekapContent">
-      <div class="animate-pulse space-y-3">
-        <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-        <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-      </div>
-    </div>
-  ${renderBottomNav('home')}`;
-  applyDarkMode();
-  loadRekapData();
-}
-
-async function loadRekapData() {
-  const bulan = document.getElementById('filterBulan').value;
-  const container = document.getElementById('rekapContent');
-  container.innerHTML = `<div class="animate-pulse space-y-3">
-    <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-    <div class="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-  </div>`;
-
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan });
-  rekapDataCache = res.data || [];
-  rekapPage = 0;
-  renderRekapPage(true);
-}
-
-function renderRekapPage(reset = false) {
-  const container = document.getElementById('rekapContent');
-  const start = rekapPage * REKAP_PER_PAGE;
-  const end = start + REKAP_PER_PAGE;
-  const pageData = rekapDataCache.slice(start, end);
-
-  if (reset) {
-    if (rekapDataCache.length === 0) {
-      container.innerHTML = `<div class="text-center py-10 text-gray-500 dark:text-gray-400">
-        <i class="ri-file-list-3-line text-5xl mb-2"></i>
-        <p>Belum ada data absensi bulan ini</p>
-      </div>`;
-      return;
-    }
-
-    container.innerHTML = `<div id="rekapList" class="space-y-3"></div>
-      <div id="rekapLoadMore" class="text-center mt-4"></div>`;
-  }
-
-  const list = document.getElementById('rekapList');
-  pageData.forEach(r => {
-    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'yellow' : r.Status === 'Izin'? 'blue' : 'red';
-    const statusIcon = r.Status === 'Hadir'? 'ri-checkbox-circle-fill' : r.Status === 'Terlambat'? 'ri-time-fill' : r.Status === 'Izin'? 'ri-mail-fill' : 'ri-close-circle-fill';
-
-    list.innerHTML += `
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
-      <div class="flex justify-between items-start mb-2">
-        <div>
-          <p class="font-bold text-gray-900 dark:text-white">${r.Tanggal}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">${r.Durasi}</p>
-        </div>
-        <span class="px-3 py-1 rounded-full text-xs font-bold bg-${statusColor}-100 dark:bg-${statusColor}-900 text-${statusColor}-700 dark:text-${statusColor}-300">
-          <i class="${statusIcon}"></i> ${r.Status}
-        </span>
-      </div>
-      <div class="grid grid-cols-2 gap-2 text-sm">
-        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Masuk</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Masuk']}</p></div>
-        <div><p class="text-gray-500 dark:text-gray-400 text-xs">Pulang</p><p class="font-bold text-gray-900 dark:text-white">${r['Jam Pulang']}</p></div>
-      </div>
-      ${r.Foto_IN? `<img src="${r.Foto_IN}" loading="lazy" class="w-full h-32 object-cover rounded-lg mt-2" />` : ''}
-    </div>`;
-  });
-
-  const loadMore = document.getElementById('rekapLoadMore');
-  if (end < rekapDataCache.length) {
-    loadMore.innerHTML = `<button onclick="loadMoreRekap()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl font-bold active:scale-95">Muat Lainnya</button>`;
-  } else {
-    loadMore.innerHTML = `<p class="text-xs text-gray-400">Semua data ditampilkan</p>`;
-  }
-}
-
-function loadMoreRekap() {
-  rekapPage++;
-  renderRekapPage(false);
-}
-
-async function loadRekapBulan() {
-  const bulan = document.getElementById('bulanRekap').value;
-  const content = document.getElementById('rekapContent');
-
-  if (!bulan) {
-    content.innerHTML = `
-      <div class="text-center py-12 text-gray-400 dark:text-gray-600">
-        <i class="ri-calendar-todo-line text-5xl mb-3"></i>
-        <p class="text-sm">Pilih bulan untuk melihat riwayat absensi</p>
-      </div>`;
-    return;
-  }
-
-  content.innerHTML = `
-    <div class="space-y-3 animate-pulse">
-      <div class="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-      <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-    </div>`;
-
-  const res = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan: bulan });
-
-  if (res.status!== 'success') {
-    content.innerHTML = `<p class="text-red-500 text-center py-8">Gagal load: ${res.msg}</p>`;
-    return;
-  }
-
-  const [year, month] = bulan.split('-').map(Number);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const firstDay = new Date(year, month - 1, 1).getDay();
-  const dataMap = {};
-
-  res.data.forEach((r, idx) => {
-    if (r.TanggalRaw && r.TanggalRaw.startsWith(`${year}-${String(month).padStart(2,'0')}`)) {
-      const day = parseInt(r.TanggalRaw.split('-')[2]);
-      dataMap[day] = {...r, _idx: idx };
-    }
-  });
-
-  window.rekapDataBulanIni = Object.values(dataMap);
-
-  const totalHadir = res.statistik.hadir || 0;
-  const totalTerlambat = res.statistik.terlambat || 0;
-  const totalAlpa = res.statistik.alpa || 0;
-  const totalIzin = res.statistik.izin || 0;
-  const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-  let html = `
-    <div class="bg-gradient-to-r from-[#800000] to-[#a00000] text-white rounded-xl p-4 mb-4 shadow-lg">
-      <div class="flex justify-between items-center">
-        <div>
-          <p class="text-xs opacity-80">Kehadiran ${namaBulan[month-1]} ${year}</p>
-          <p class="text-3xl font-bold">${totalHadir}/${daysInMonth}</p>
-          <p class="text-xs opacity-80 mt-1">hari</p>
-        </div>
-        <div class="text-right">
-          <div class="text-2xl font-bold">${Math.round(totalHadir/daysInMonth*100)}%</div>
-          <p class="text-xs opacity-80">Tingkat hadir</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
-      <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
-        <div>M</div><div>S</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
-      </div>
-      <div class="grid grid-cols-7 gap-2">`;
-
-  for(let i=0; i<firstDay; i++){
-    html += `<div></div>`;
-  }
-
-  for(let day=1; day<=daysInMonth; day++){
-    const r = dataMap[day];
-    let bg = 'bg-gray-100 dark:bg-gray-700';
-    let text = 'text-gray-400';
-    let status = 'alpa';
-    let idx = -1;
-
-    if(r){
-      idx = r._idx;
-      if(r.Status === 'Hadir'){
-        bg = 'bg-green-500';
-        status = 'hadir';
-        text = 'text-white';
-      } else if(r.Status === 'Terlambat'){
-        bg = 'bg-orange-500';
-        status = 'terlambat';
-        text = 'text-white';
-      } else if(r.Status === 'Izin'){
-        bg = 'bg-blue-500';
-        status = 'izin';
-        text = 'text-white';
-      } else {
-        bg = 'bg-red-500';
-        text = 'text-white';
-      }
-    }
-
-    const today = new Date();
-    const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
-    const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
-
-    html += `
-      <button onclick="showDetailTanggal(${day}, '${status}', ${idx})"
-              class="${bg} ${text} ${ring} aspect-square rounded-lg flex items-center justify-center font-bold text-sm active:scale-90 transition">
-        ${day}
-      </button>`;
-  }
-
-  html += `
-      </div>
-      <div class="flex justify-center gap-3 mt-4 text-xs flex-wrap">
-        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div>Hadir</div>
-        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-orange-500 rounded"></div>Telat</div>
-        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-500 rounded"></div>Izin</div>
-        <div class="flex items-center gap-1"><div class="w-3 h-3 bg-red-500 rounded"></div>Alpa</div>
-      </div>
-    </div>
-
-    <div id="detailTanggal" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 hidden">
-      <p class="text-center text-gray-400 text-sm">Klik tanggal untuk lihat detail</p>
-    </div>
-  `;
-
-  content.innerHTML = html;
-}
-
-function showDetailTanggal(day, status, idx) {
-  const el = document.getElementById('detailTanggal');
-  const r = idx >= 0? window.rekapDataBulanIni.find(d => d._idx === idx) : null;
-
-  if (!r || status === 'alpa') {
-    el.innerHTML = `
-      <div class="text-center py-4">
-        <i class="ri-close-circle-line text-4xl text-red-500 mb-2"></i>
-        <p class="font-bold text-gray-800 dark:text-white">Tanggal ${day}</p>
-        <p class="text-sm text-red-500">Tidak Ada Data Absensi</p>
-      </div>`;
-    el.classList.remove('hidden');
-    return;
-  }
-
-  const masuk = r['Jam Masuk'] || '-';
-  const pulang = r['Jam Pulang'] || '-';
-  const durasi = r.Durasi || '-';
-  const lokasi = r.Lokasi || '-';
-  const lat = r.Latitude || '';
-  const lon = r.Longitude || '';
-  let warnaStatus = 'text-green-600';
-  let iconStatus = 'ri-checkbox-circle-line';
-  let labelStatus = 'Hadir Tepat Waktu';
-
-  if(status === 'terlambat') {
-    warnaStatus = 'text-orange-600';
-    iconStatus = 'ri-time-line';
-    labelStatus = 'Terlambat';
-  } else if(status === 'izin') {
-    warnaStatus = 'text-blue-600';
-    iconStatus = 'ri-mail-line';
-    labelStatus = 'Izin';
-  }
-
-  el.innerHTML = `
-    <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-      <i class="${iconStatus} text-3xl ${warnaStatus}"></i>
-      <div>
-        <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
-        <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
-      </div>
-    </div>
-    <div class="grid grid-cols-3 gap-3 text-center mb-3">
-      <div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
-        <p class="font-bold text-sm text-gray-800 dark:text-white">${masuk}</p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulang</p>
-        <p class="font-bold text-sm text-gray-800 dark:text-white">${pulang}</p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
-        <p class="font-bold text-sm text-[#800000]">${durasi}</p>
-      </div>
-    </div>
-    ${lokasi!== '-'? `
-    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-      <div class="flex items-start gap-2">
-        <i class="ri-map-pin-line text-gray-500 dark:text-gray-400 mt-0.5"></i>
-        <div class="flex-1">
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Lokasi</p>
-          <p class="text-sm text-gray-800 dark:text-white mb-2">${lokasi}</p>
-          ${lat && lon? `
-          <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')"
-                  class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-95 transition">
-            <i class="ri-map-2-line"></i> Buka Maps
-          </button>
-          ` : ''}
-        </div>
-      </div>
-    </div>
-    ` : ''}
-  `;
-  el.classList.remove('hidden');
-  el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-}
-// --- AKHIR BAGIAN 3 ---
-// --- PATROLI ---
 async function renderPatroli() {
   stopAllStreams();
   patroliFoto = null;
@@ -1336,7 +1001,6 @@ async function submitPatroli() {
   }
 }
 
-// --- LAPOR KEJADIAN ---
 async function renderLaporKejadian() {
   stopAllStreams();
   kejadianFoto = null;
@@ -1561,54 +1225,8 @@ async function renderDarurat() {
   }
 }
 
-async function renderLogin() {
-  stopAllStreams();
-  sessionStorage.clear();
-  currentUser = null;
-  applyDarkMode();
-  const res = await apiCall('get_setting');
-  if (res.status === 'success') {
-    appSetting = res.data;
-    sessionStorage.setItem('setting', JSON.stringify(appSetting));
-  }
-  app.innerHTML = `
-  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-11/12 max-w-sm">
-      <img src="${LOGO_APP}" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover shadow-lg">
-      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">${APP_NAME}</h1>
-
-      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 rounded-2xl mb-3 focus:border-[#800000] focus:outline-none transition">
-
-      <div class="relative mb-3">
-        <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 pr-12 rounded-2xl focus:border-[#800000] focus:outline-none transition">
-        <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 active:scale-90">
-          <i id="iconPassword" class="ri-eye-off-line text-xl"></i>
-        </button>
-      </div>
-
-      <button onclick="login()" class="w-full text-white p-4 rounded-2xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
-      <p id="err" class="text-red-500 text-sm mt-3 text-center"></p>
-    </div>
-  </div>`;
-}
-
-function togglePassword() {
-  const input = document.getElementById('password');
-  const icon = document.getElementById('iconPassword');
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.className = 'ri-eye-line text-xl';
-  } else {
-    input.type = 'password';
-    icon.className = 'ri-eye-off-line text-xl';
-  }
-}
-
-function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // fix: sebelumnya =!isDarkMode
-  localStorage.setItem('darkMode', isDarkMode);
-  applyDarkMode();
-  renderHome();
+function comingSoon() {
+  showToast('Fitur ini segera hadir!', 'warning');
 }
 
 // --- INIT ---
@@ -1616,4 +1234,3 @@ function toggleDarkMode() {
   applyDarkMode();
   currentUser? renderHome() : renderLogin();
 })();
-// --- AKHIR BAGIAN 4 ---
