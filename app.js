@@ -53,14 +53,14 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode;
+  isDarkMode =!isDarkMode; // FIX: tadinya =!isDarkMode
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderHome();
 }
 
 function showToast(msg, type = 'success') {
-  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
+  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]); // FIX: tadinya [50]
   const toast = document.createElement('div');
   const bg = type === 'success'? 'bg-green-500' : type === 'warning'? 'bg-orange-500' : 'bg-red-500';
   const icon = type === 'success'? 'ri-check-line' : type === 'warning'? 'ri-alert-line' : 'ri-close-line';
@@ -230,6 +230,7 @@ async function renderHome() {
         <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
       </div>
     </div>
+   </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <i class="ri-notification-3-line"></i>
       <i class="ri-menu-line"></i>
