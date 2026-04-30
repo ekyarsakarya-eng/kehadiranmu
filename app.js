@@ -53,14 +53,14 @@ function applyDarkMode() {
 }
 
 function toggleDarkMode() {
-  isDarkMode =!isDarkMode; // FIX: tadinya =!isDarkMode
+  isDarkMode =!isDarkMode; // sebelumnya =!isDarkMode
   localStorage.setItem('darkMode', isDarkMode);
   applyDarkMode();
   renderHome();
 }
 
 function showToast(msg, type = 'success') {
-  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]); // FIX: tadinya [50]
+  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
   const toast = document.createElement('div');
   const bg = type === 'success'? 'bg-green-500' : type === 'warning'? 'bg-orange-500' : 'bg-red-500';
   const icon = type === 'success'? 'ri-check-line' : type === 'warning'? 'ri-alert-line' : 'ri-close-line';
