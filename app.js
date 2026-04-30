@@ -74,7 +74,6 @@ function showToast(msg, type = 'success') {
     setTimeout(() => toast.remove(), 200);
   }, 2000);
 }
-
 async function apiCall(action, payload = {}) {
   try {
     const res = await fetch(API_URL, {
