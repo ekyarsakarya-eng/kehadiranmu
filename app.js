@@ -362,6 +362,55 @@ function startLiveClock() {
   liveClockInterval = setInterval(update, 1000);
 }
 
+function initSwipeGesture() {
+  const wrapper = document.getElementById('swipeWrapper');
+  if (!wrapper) return;
+
+  let startX = 0;
+  let currentX = 0;
+  let isDragging = false;
+
+  const handleStart = (e) => {
+    startX = e.type.includes('mouse')? e.clientX : e.touches[0].clientX;
+    isDragging = true;
+    wrapper.style.cursor = 'grabbing';
+  };
+
+  const handleMove = (e) => {
+    if (!isDragging) return;
+    currentX = e.type.includes('mouse')? e.clientX : e.touches[0].clientX;
+  };
+
+  const handleEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    wrapper.style.cursor = 'grab';
+    const diff = startX - currentX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && window.swipeCurrentCard === 0) swipeCard(1);
+      else if (diff < 0 && window.swipeCurrentCard === 1) swipeCard(0);
+    }
+  };
+
+  wrapper.addEventListener('touchstart', handleStart, { passive: true });
+  wrapper.addEventListener('touchmove', handleMove, { passive: true });
+  wrapper.addEventListener('touchend', handleEnd, { passive: true });
+  wrapper.addEventListener('mousedown', handleStart);
+  wrapper.addEventListener('mousemove', handleMove);
+  wrapper.addEventListener('mouseup', handleEnd);
+  wrapper.addEventListener('mouseleave', handleEnd);
+
+  window.swipeCurrentCard = 0;
+}
+
+function swipeCard(idx) {
+  window.swipeCurrentCard = idx;
+  const container = document.getElementById('swipeContainer');
+  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
+  document.getElementById('dot-0').className = idx === 0? 'w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300' : 'w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300';
+  document.getElementById('dot-1').className = idx === 1? 'w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300' : 'w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300';
+}
+
 async function renderHome() {
   stopAllStreams();
 
@@ -403,59 +452,67 @@ async function renderHome() {
       <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
     </div>
 
-    <div id="statusCard" class="bg-gray-300 text-white rounded-2xl p-4 shadow-lg mb-4 animate-pulse">
-      <div class="flex items-center gap-3">
-        <i class="ri-loader-4-line text-3xl animate-spin"></i>
-        <div>
-          <p class="text-xs opacity-90">Status Hari Ini</p>
-          <p class="font-bold text-lg">Loading...</p>
-        </div>
-      </div>
-    </div>
+    <!-- SWIPE WRAPPER: CARD MERAH ↔ STATISTIK -->
+    <div class="relative overflow-hidden mb-4 cursor-grab select-none" id="swipeWrapper">
+      <div class="flex transition-transform duration-300 ease-out" id="swipeContainer">
 
-    <div class="bg-gradient-to-br from-[#800000] to-[#a00000] text-white rounded-3xl p-5 shadow-2xl mb-4">
-      <div class="flex items-center gap-3 mb-5">
-        <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-1 shadow-lg flex-shrink-0">
-        <div class="min-w-0">
-          <p class="font-bold text-lg truncate uppercase">${currentUser.Nama}</p>
-          <p class="text-xs opacity-90">${currentUser.Jabatan || 'Satpam'} | ${currentUser.Unit_Kerja || '-'}</p>
+        <!-- CARD 1: MERAH - GAMBAR 1 -->
+        <div class="w-full flex-shrink-0">
+          <div class="bg-gradient-to-br from-[#800000] to-[#9a0000] text-white rounded-3xl p-5 shadow-2xl">
+            <div class="flex items-center gap-3 mb-5">
+              <img src="${fotoUser}" class="w-12 h-12 rounded-full object-cover bg-white p-0.5 shadow-lg flex-shrink-0 border-2 border-white/30">
+              <div class="min-w-0">
+                <p class="font-bold text-base uppercase">${currentUser.Nama}</p>
+                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Koordinator'} | ${currentUser.Unit_Kerja || 'Keamanan'}</p>
+              </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <button onclick="quickAbsen('IN')" class="bg-white/10 backdrop-blur-md rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-white/20 hover:bg-white/20">
+                <i class="ri-login-circle-line text-3xl mb-1"></i>
+                <p class="font-bold text-xs">Absen Masuk</p>
+              </button>
+              <button onclick="quickAbsen('OUT')" class="bg-white/10 backdrop-blur-md rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-white/20 hover:bg-white/20">
+                <i class="ri-logout-circle-r-line text-3xl mb-1"></i>
+                <p class="font-bold text-xs">Absen Pulang</p>
+              </button>
+            </div>
+            <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3 rounded-2xl font-bold active:scale-95 transition shadow-lg hover:shadow-xl">
+              Buka Kamera Absen
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3 mb-4">
-        <button onclick="quickAbsen('IN')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border-white/20">
-          <i class="ri-login-circle-line text-4xl mb-2"></i>
-          <p class="font-bold text-sm">Absen Masuk</p>
-        </button>
-        <button onclick="quickAbsen('OUT')" class="bg-white/15 backdrop-blur-md rounded-2xl p-5 active:scale-95 transition flex flex-col items-center border-white/20">
-          <i class="ri-logout-circle-r-line text-4xl mb-2"></i>
-          <p class="font-bold text-sm">Absen Pulang</p>
-        </button>
-      </div>
-      <button onclick="renderAbsen()" class="w-full bg-white text-[#800000] py-3.5 rounded-2xl font-bold active:scale-95 transition shadow-lg">
-        Buka Kamera Absen
-      </button>
-    </div>
 
-    <div onclick="renderRekap()" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 mb-4 active:scale-98 transition cursor-pointer">
-      <div class="flex items-center justify-between mb-3">
-        <p class="font-bold text-gray-800 dark:text-white">Statistik Bulan Ini</p>
-        <i class="ri-arrow-right-s-line text-xl text-gray-400"></i>
+        <!-- CARD 2: STATISTIK - GAMBAR 2 -->
+        <div class="w-full flex-shrink-0">
+          <div onclick="renderRekap()" class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-5 h-full active:scale-98 transition cursor-pointer">
+            <div class="flex items-center justify-between mb-3">
+              <p class="font-bold text-sm text-gray-800 dark:text-white">Statistik Bulan Ini</p>
+              <i class="ri-arrow-right-s-line text-xl text-gray-400"></i>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-green-50 dark:bg-green-900/30 rounded-xl p-3">
+                <p id="statHadir" class="text-2xl font-bold text-green-600 dark:text-green-400">-</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Hadir</p>
+              </div>
+              <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3">
+                <p id="statIzin" class="text-2xl font-bold text-blue-600 dark:text-blue-400">-</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Izin</p>
+              </div>
+              <div class="bg-red-50 dark:bg-red-900/30 rounded-xl p-3">
+                <p id="statAlpa" class="text-2xl font-bold text-red-600 dark:text-red-400">-</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Alpha</p>
+              </div>
+            </div>
+            <p class="text-center text-xs text-[#800000] dark:text-red-400 font-semibold mt-3">Tap untuk lihat detail rekap →</p>
+          </div>
+        </div>
       </div>
-      <div class="grid grid-cols-3 gap-3 text-center">
-        <div class="bg-green-50 dark:bg-green-900/30 rounded-xl p-3">
-          <p id="statHadir" class="text-2xl font-bold text-green-600 dark:text-green-400">-</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Hadir</p>
-        </div>
-        <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3">
-          <p id="statIzin" class="text-2xl font-bold text-blue-600 dark:text-blue-400">-</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Izin</p>
-        </div>
-        <div class="bg-red-50 dark:bg-red-900/30 rounded-xl p-3">
-          <p id="statAlpa" class="text-2xl font-bold text-red-600 dark:text-red-400">-</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Alpha</p>
-        </div>
+
+      <!-- DOT INDICATOR -->
+      <div class="flex justify-center gap-2 mt-3">
+        <button onclick="swipeCard(0)" class="w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300" id="dot-0"></button>
+        <button onclick="swipeCard(1)" class="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300" id="dot-1"></button>
       </div>
-      <p class="text-center text-xs text-[#800000] font-semibold mt-3">Tap untuk lihat detail rekap →</p>
+      <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-2">← Geser untuk lihat statistik</p>
     </div>
 
     <div class="mt-6">
@@ -493,45 +550,12 @@ async function renderHome() {
 
   applyDarkMode();
   startLiveClock();
+  initSwipeGesture();
 
   Promise.all([
     apiCall('get_dashboard', { nama: currentUser.Nama.trim() }),
     apiCall('get_rekap_user', { nama: currentUser.Nama.trim() })
   ]).then(([dashboardRes, rekapRes]) => {
-    const jamMasuk = dashboardRes.jamMasuk || '00:00';
-    const jamPulang = dashboardRes.jamPulang || '00:00';
-    globalJamPulang = jamPulang;
-    const sudahMasuk = jamMasuk!== '00:00' && jamMasuk!== '-';
-    const sudahPulang = jamPulang!== '00:00' && jamPulang!== '-';
-
-    let statusText = 'Belum Absen Masuk';
-    let statusColor = 'bg-red-500';
-    let statusIcon = 'ri-close-circle-line';
-    if (sudahPulang) {
-      statusText = `Sudah Pulang ${jamPulang}`;
-      statusColor = 'bg-blue-500';
-      statusIcon = 'ri-home-4-line';
-    } else if (sudahMasuk) {
-      statusText = `Sudah Masuk ${jamMasuk}`;
-      statusColor = 'bg-green-500';
-      statusIcon = 'ri-checkbox-circle-line';
-    }
-
-    const statusCard = document.getElementById('statusCard');
-    statusCard.className = `${statusColor} text-white rounded-2xl p-4 shadow-lg mb-4 active:scale-95 transition cursor-pointer`;
-    statusCard.onclick = renderAbsen;
-    statusCard.innerHTML = `
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="${statusIcon} text-3xl"></i>
-          <div>
-            <p class="text-xs opacity-90">Status Hari Ini</p>
-            <p class="font-bold text-lg">${statusText}</p>
-          </div>
-        </div>
-        <i class="ri-arrow-right-s-line text-2xl"></i>
-      </div>`;
-
     if (rekapRes.status === 'success' && rekapRes.statistik) {
       document.getElementById('statHadir').innerText = rekapRes.statistik.hadir || 0;
       document.getElementById('statIzin').innerText = rekapRes.statistik.izin || 0;
