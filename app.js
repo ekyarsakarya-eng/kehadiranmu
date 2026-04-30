@@ -136,6 +136,18 @@ async function renderLogin() {
   </div>`;
 }
 
+function togglePasswordVisibility() {
+  const passInput = document.getElementById('loginPass');
+  const iconMata = document.getElementById('iconMata');
+  if (passInput.type === 'password') {
+    passInput.type = 'text';
+    iconMata.className = 'ri-eye-line text-xl';
+  } else {
+    passInput.type = 'password';
+    iconMata.className = 'ri-eye-off-line text-xl';
+  }
+}
+
 async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
