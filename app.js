@@ -113,29 +113,48 @@ function renderBottomNav(active) {
 }
 // === AKHIR BAGIAN 1 ===
 // === BAGIAN 2: LOGIN & HOME ===
-async function renderLogin() {
-  stopAllStreams();
-  sessionStorage.clear();
-  currentUser = null;
-  applyDarkMode();
-  const res = await apiCall('get_setting');
-  if (res.status === 'success') {
-    appSetting = res.data;
-    sessionStorage.setItem('setting', JSON.stringify(appSetting));
-  }
+function renderLogin() {
   app.innerHTML = `
-  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm">
-      <img src="${LOGO_APP}" class="w-20 h-20 rounded-full mx-auto mb-4 object-cover shadow-lg">
-      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">${APP_NAME}</h1>
-      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 rounded-xl mb-3 focus:border-[#800000] focus:outline-none transition">
-      <button onclick="login()" class="w-full text-white p-3 rounded-xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
-      <p id="err" class="text-red-500 text-sm mt-2 text-center"></p>
+  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4 relative">
+    <div class="absolute inset-0 overflow-hidden opacity-20">
+      <div class="absolute w-96 h-96 bg-[#800000] rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
+      <div class="absolute w-96 h-96 bg-blue-600 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse"></div>
     </div>
-  </div>`;
+    <div class="w-full max-w-md relative z-10">
+      <div class="flex flex-col items-center mb-8">
+        <div class="w-32 h-32 rounded-full bg-gradient-to-br from-[#800000] to-[#a00000] flex items-center justify-center mb-4 shadow-2xl border-4 border-white/20">
+          <i class="ri-shield-keyhole-fill text-white text-6xl"></i>
+        </div>
+        <h1 class="text-4xl font-extrabold text-white tracking-tight font-header text-center">${APP_NAME}</h1>
+        <p class="text-gray-400 text-sm mt-2">${APP_COMPANY}</p>
+      </div>
+      <div class="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-200 mb-2">ID / NIK</label>
+          <div class="relative">
+            <i class="ri-user-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input id="loginNik" type="text" placeholder="Masukkan ID Anda" class="w-full pl-12 pr-4 py-4 rounded-xl border-white/20 bg-white/5 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#800000] focus:outline-none transition text-lg">
+          </div>
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-200 mb-2">Password</label>
+          <div class="relative">
+            <i class="ri-lock-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input id="loginPass" type="password" placeholder="Masukkan Password" class="w-full pl-12 pr-12 py-4 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#800000] focus:outline-none transition text-lg">
+            <button type="button" onclick="togglePasswordVisibility()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 active:scale-90 transition">
+              <i id="iconMata" class="ri-eye-off-line text-xl"></i>
+            </button>
+          </div>
+        </div>
+        <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition">Masuk</button>
+      </div>
+      <p class="text-center text-gray-500 text-xs mt-6">© 2025 ${APP_COMPANY}</p>
+    </div>
+  </div>
+  `;
 }
 
+// Tambah fungsi baru ini di bawah renderLogin
 function togglePasswordVisibility() {
   const passInput = document.getElementById('loginPass');
   const iconMata = document.getElementById('iconMata');
