@@ -225,20 +225,24 @@ async function renderDataAbsensi() {
 
 function renderTabelRekap(data) {
   if (data.length === 0) return '<tr><td colspan="6" class="p-8 text-center text-gray-400">Tidak ada data</td></tr>';
-  return data.map(r => `
+
+  return data.map(r => {
+    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'orange' : 'red';
+
+    return `
     <tr class="border-b hover:bg-gray-50">
-      <td class="p-4 text-sm">${escapeHtml(r.Tanggal)}</td>
+      <td class="p-4 text-sm">${escapeHtml(r.Tanggal || '-')}</td>
       <td class="p-4 font-semibold">${escapeHtml(r.Nama)}</td>
       <td class="p-4 text-sm">${escapeHtml(r.Unit_Kerja || '-')}</td>
       <td class="p-4 text-sm">${escapeHtml(r['Jam Masuk'] || '-')}</td>
       <td class="p-4 text-sm">${escapeHtml(r['Jam Pulang'] || '-')}</td>
       <td class="p-4">
-        <span class="px-3 py-1 rounded-full text-xs font-bold ${r.Status === 'Hadir'? 'bg-green-100 text-green-700' : r.Status === 'Terlambat'? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}">
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-${statusColor}-100 text-${statusColor}-700">
           ${escapeHtml(r.Status)}
         </span>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 async function loadRekapFilter() {
@@ -250,7 +254,7 @@ async function loadRekapFilter() {
 }
 
 function exportExcel() {
-  const ws = XLSX.utils.json_to_sheet(rekapData);
+  const ws = XLSX.utils.json_to_sheet(rekapData); // rekapData udah diformat dari GAS
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap Absensi');
   XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
