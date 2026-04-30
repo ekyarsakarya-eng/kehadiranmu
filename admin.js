@@ -27,7 +27,7 @@ async function apiCall(action, payload = {}) {
 }
 
 function showToast(msg, type = 'success') {
-  const bg = type === 'success'? 'bg-green-500' : 'bg-red-500';
+  const bg = type === 'success'? 'bg-green-500' : type === 'error'? 'bg-red-500' : 'bg-orange-500';
   const toast = document.createElement('div');
   toast.className = `fixed top-4 right-4 ${bg} text-white px-6 py-3 rounded-lg shadow-xl z-50`;
   toast.innerText = msg;
@@ -106,7 +106,8 @@ function logoutAdmin() {
   renderLoginAdmin();
 }
 // === AKHIR BAGIAN 1 ===
-// === BAGIAN 2: DASHBOARD & DATA ABSENSI ===
+
+// === BAGIAN 2: DASHBOARD & DATA ABSENSI [SUDAH DIBENERIN] ===
 async function renderDashboard() {
   const stats = await apiCall('get_admin_stats', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
   app.innerHTML = `
@@ -146,7 +147,6 @@ async function renderDashboard() {
           </div>
           <p class="text-3xl font-bold text-gray-800 dark:text-white">${stats.kejadian || 0}</p>
         </div>
-      </div>
       <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
         <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Grafik Kehadiran 7 Hari Terakhir</h3>
         <canvas id="chartHadir" height="80"></canvas>
@@ -195,7 +195,9 @@ async function renderDataAbsensi() {
         </button>
       </div>
       <div class="bg-white p-4 rounded-xl shadow mb-6 flex gap-4">
-        <input type="date" id="filterTgl" value="${today}" class="border-2 border-gray-200 p-2 rounded-lg">
+        <select id="filterBulan" class="border-2 border-gray-200 p-2 rounded-lg">
+          ${generateBulanOptions()}
+        </select>
         <select id="filterUnit" class="border-2 border-gray-200 p-2 rounded-lg ${isSuper? '' : 'hidden'}">
           <option value="all">Semua Unit</option>
         </select>
@@ -219,16 +221,41 @@ async function renderDataAbsensi() {
         </table>
       </div>
     </div>
-  </div>
   `;
+  if(isSuper) {
+    const resUnit = await apiCall('get_all_unit');
+    if(resUnit.status === 'success') {
+      document.getElementById('filterUnit').innerHTML += resUnit.data.map(u =>
+        `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`
+      ).join('');
+    }
+  }
+}
+
+function generateBulanOptions() {
+  const options = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    options.push(`<option value="${val}" ${i===0?'selected':''}>${label}</option>`);
+  }
+  return options.join('');
+}
+
+async function loadRekapFilter() {
+  const bulan = document.getElementById('filterBulan').value;
+  const unit = document.getElementById('filterUnit')? document.getElementById('filterUnit').value : 'all';
+  const res = await apiCall('get_rekap_admin', { unit: isSuper? unit : currentAdmin.Unit_Kerja, bulan: bulan });
+  rekapData = res.data || [];
+  document.getElementById('tabelRekap').innerHTML = renderTabelRekap(rekapData);
 }
 
 function renderTabelRekap(data) {
   if (data.length === 0) return '<tr><td colspan="6" class="p-8 text-center text-gray-400">Tidak ada data</td></tr>';
-
   return data.map(r => {
-    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'orange' : 'red';
-
+    const statusColor = r.Status === 'Hadir'? 'green' : r.Status === 'Terlambat'? 'orange' : r.Status === 'Izin'? 'blue' : 'red';
     return `
     <tr class="border-b hover:bg-gray-50">
       <td class="p-4 text-sm">${escapeHtml(r.Tanggal || '-')}</td>
@@ -245,23 +272,16 @@ function renderTabelRekap(data) {
   }).join('');
 }
 
-async function loadRekapFilter() {
-  const tgl = document.getElementById('filterTgl').value;
-  const unit = document.getElementById('filterUnit')? document.getElementById('filterUnit').value : 'all';
-  const res = await apiCall('get_rekap_admin', { unit: isSuper? unit : currentAdmin.Unit_Kerja, bulan: tgl.substring(0,7) });
-  rekapData = res.data || [];
-  document.getElementById('tabelRekap').innerHTML = renderTabelRekap(rekapData);
-}
-
 function exportExcel() {
-  const ws = XLSX.utils.json_to_sheet(rekapData); // rekapData udah diformat dari GAS
+  const ws = XLSX.utils.json_to_sheet(rekapData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap Absensi');
   XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
   showToast('Excel berhasil didownload!', 'success');
 }
 // === AKHIR BAGIAN 2 ===
-// === BAGIAN 3: KELOLA USER & INIT ===
+
+// === BAGIAN 3: KELOLA USER & INIT [TIDAK DIUBAH] ===
 async function renderKelolaUser() {
   const res = await apiCall('get_all_user', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
   allUser = res.data || [];
