@@ -1343,6 +1343,27 @@ function comingSoon() {
   showToast('Fitur Izin segera hadir', 'warning');
 }
 
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Munculin tombol install manual kalo mau
+  console.log('PWA bisa diinstall');
+});
+
+// Panggil ini pas klik tombol
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') showToast('App berhasil diinstall!', 'success');
+      deferredPrompt = null;
+    });
+  } else {
+    showToast('Buka via Chrome > titik 3 > Install app', 'warning');
+  }
+}
+
 // INIT
 (function init() {
   applyDarkMode();
