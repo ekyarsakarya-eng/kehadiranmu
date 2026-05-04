@@ -105,7 +105,113 @@ function renderBottomNav(active) {
     </button>
   </div>`;
 }
+// === CONFIG & GLOBAL VAR ===
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
+const LOGO_APP = 'logo.png';
+const APP_NAME = 'ABSENSI KEHADIRAN TERPADU';
+const app = document.getElementById('app');
+let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
+let liveClockInterval = null;
+let absenStream = null;
+let isDarkMode = localStorage.getItem('darkMode') === 'true';
+let absenFoto = null;
+let absenTipe = 'IN';
+let currentLokasi = null;
+let patroliFoto = null;
+let kejadianFoto = null;
+let urgensiKejadian = 'Rendah';
+let rekapDataCache = [];
+let rekapPage = 0;
+const REKAP_PER_PAGE = 10;
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+if ('Notification' in window) Notification.requestPermission();
+
+// === UTILS ===
+function stopAllStreams() {
+  if (absenStream) {
+    absenStream.getTracks().forEach(t => t.stop());
+    absenStream = null;
+  }
+  if (liveClockInterval) {
+    clearInterval(liveClockInterval);
+    liveClockInterval = null;
+  }
+}
+
+function applyDarkMode() {
+  if (isDarkMode) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
+function toggleDarkMode() {
+  isDarkMode =!isDarkMode;
+  localStorage.setItem('darkMode', isDarkMode);
+  applyDarkMode();
+  renderHome();
+}
+
+function showToast(msg, type = 'success') {
+  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
+  const toast = document.createElement('div');
+  const bg = type === 'success'? 'bg-green-500' : type === 'warning'? 'bg-orange-500' : 'bg-red-500';
+  const icon = type === 'success'? 'ri-check-line' : type === 'warning'? 'ri-alert-line' : 'ri-close-line';
+  toast.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-lg shadow-2xl z-[200] flex items-center gap-2 transition-all duration-300`;
+  toast.style.transform = 'translate(-50%, -100px)';
+  toast.innerHTML = `<i class="${icon} text-xl"></i><p class="font-semibold text-sm">${msg}</p>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
+  setTimeout(() => {
+    toast.style.transform = 'translate(-50%, -100px)';
+    setTimeout(() => toast.remove(), 200);
+  }, 2000);
+}
+
+async function apiCall(action, payload = {}) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      body: JSON.stringify({ action,...payload }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+    });
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch (e) {
+    showToast('Gagal konek server', 'error');
+    return { status: 'error', msg: e.message };
+  }
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h >= 4 && h < 11) return { text: 'Selamat Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
+  if (h >= 11 && h < 15) return { text: 'Selamat Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
+  if (h >= 15 && h < 18) return { text: 'Selamat Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
+  return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
+}
+
+function renderBottomNav(active) {
+  return `
+  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
+    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+      <i class="ri-home-5-fill text-2xl"></i>
+      <p class="font-semibold">Home</p>
+    </button>
+    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+      <i class="ri-user-3-fill text-2xl"></i>
+      <p class="font-semibold">Account</p>
+    </button>
+  </div>`;
+}
 // === LOGIN ===
 async function renderLogin() {
   stopAllStreams();
@@ -176,8 +282,7 @@ function logout() {
   currentUser = null;
   renderLogin();
 }
-
-// === HOME BARU ===
+// === HOME & DASHBOARD BARU ===
 function getTimeMode() {
   const h = new Date().getHours();
   if (h >= 4 && h < 11) return 'pagi';
@@ -311,17 +416,17 @@ async function renderHome() {
           </div>
           <div class="flex-1">
             <div class="grid grid-cols-3 gap-2 text-center mb-2">
-              <div class="glass rounded-xl p-2">
-                <p id="statHadirHome" class="text-xl font-bold text-green-600 dark:text-green-400">0</p>
-                <p class="text- text-gray-600 dark:text-gray-400">Hadir</p>
+              <div class="bg-[#f5e6d3] rounded-xl p-2">
+                <p id="statHadirHome" class="text-xl font-bold text-[#800000]">0</p>
+                <p class="text- text-[#600000]">Hadir</p>
               </div>
-              <div class="glass rounded-xl p-2">
-                <p id="statIzinHome" class="text-xl font-bold text-blue-600 dark:text-blue-400">0</p>
-                <p class="text- text-gray-600 dark:text-gray-400">Izin</p>
+              <div class="bg-[#f5e6d3] rounded-xl p-2">
+                <p id="statIzinHome" class="text-xl font-bold text-[#800000]">0</p>
+                <p class="text- text-[#600000]">Izin</p>
               </div>
-              <div class="glass rounded-xl p-2">
-                <p id="statAlpaHome" class="text-xl font-bold text-red-600 dark:text-red-400">0</p>
-                <p class="text- text-gray-600 dark:text-gray-400">Alpha</p>
+              <div class="bg-[#f5e6d3] rounded-xl p-2">
+                <p id="statAlpaHome" class="text-xl font-bold text-[#800000]">0</p>
+                <p class="text- text-[#600000]">Alpha</p>
               </div>
             </div>
             <p id="quoteMotivasi" class="text-xs text-gray-600 dark:text-gray-400 italic">Memuat motivasi...</p>
@@ -346,12 +451,12 @@ async function renderHome() {
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3 mb-3 relative z-10">
-              <button onclick="quickAbsen('IN')" class="ripple glass rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-white/20 hover:bg-white/20">
+              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4]">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
                 <p class="font-bold text-xs">Absen Masuk</p>
                 <p id="jamMasukToday" class="text- opacity-70 mt-1">-</p>
               </button>
-              <button onclick="quickAbsen('OUT')" class="ripple glass rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-white/20 hover:bg-white/20">
+              <button onclick="quickAbsen('OUT')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4]">
                 <i class="ri-logout-circle-r-line text-3xl mb-1"></i>
                 <p class="font-bold text-xs">Absen Pulang</p>
                 <p id="jamPulangToday" class="text- opacity-70 mt-1">-</p>
@@ -477,7 +582,7 @@ async function loadHomeData() {
       if(cardAbsen) cardAbsen.style.background = 'linear-gradient(135deg, #10b981, #059669)';
     } else if (res.sudahAbsenMasuk) {
       statusEl.innerHTML = '<i class="ri-time-fill"></i> Masuk';
-      statusEl.className = 'px-3 py-1 rounded-full bg-yellow-500 text-xs font-bold animate-glow';
+      statusEl.className = 'px-3 py-1 rounded-full bg-[#e8d5c4] text-[#600000] text-xs font-bold animate-glow';
       if(cardAbsen) cardAbsen.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
     } else {
       statusEl.innerHTML = '<i class="ri-close-circle-fill"></i> Belum';
@@ -503,7 +608,6 @@ async function loadHomeData() {
     }
   }
 }
-
 function animateNumber(id, end, suffix = '') {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1025,6 +1129,7 @@ async function renderAccount() {
         </div>
       </div>
     </div>
+  </div>
   ${renderBottomNav('account')}`;
   applyDarkMode();
 }
@@ -1061,6 +1166,7 @@ async function renderPatroli() {
         <i class="ri-check-line"></i> Submit Patroli
       </button>
     </div>
+  </div>
   ${renderBottomNav('home')}`;
   applyDarkMode();
   loadPosPatroli();
@@ -1209,6 +1315,7 @@ async function renderDarurat() {
         <i class="ri-alarm-warning-line"></i> Kirim Laporan Darurat
       </button>
     </div>
+  </div>
   ${renderBottomNav('home')}`;
   applyDarkMode();
 }
