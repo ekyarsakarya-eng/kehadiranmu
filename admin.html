@@ -9,9 +9,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            'header': ['Montserrat', 'sans-serif'],
+            'sans': ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
   <style>
+    * { -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Inter', sans-serif; }
-   .font-header { font-family: 'Montserrat', sans-serif; }
+    .font-header { font-family: 'Montserrat', sans-serif; }
   </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
