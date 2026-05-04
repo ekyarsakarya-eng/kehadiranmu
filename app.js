@@ -362,6 +362,35 @@ function startLiveClock() {
   liveClockInterval = setInterval(update, 1000);
 }
 
+function loadQuoteMotivasi() {
+  const quotes = [
+    "Kerja keras mengalahkan bakat ketika bakat tidak bekerja keras.",
+    "Disiplin adalah jembatan antara tujuan dan pencapaian.",
+    "Sukses adalah jumlah dari usaha kecil yang diulang setiap hari.",
+    "Jadilah produktif, bukan hanya sibuk.",
+    "Integritas adalah melakukan hal benar meski tidak ada yang melihat."
+  ];
+  const quote = quotes[Math.floor(Math.random() * quotes.length)];
+  const el = document.getElementById('quoteMotivasi');
+  if (el) el.innerText = `"${quote}"`;
+}
+
+function showQuickMenu() {
+  document.getElementById('quickMenuSheet').classList.remove('hidden');
+}
+function closeQuickMenu() {
+  document.getElementById('quickMenuSheet').classList.add('hidden');
+}
+function showNotifikasi() {
+  showToast('Belum ada notifikasi baru', 'warning');
+}
+function renderIzin() {
+  showToast('Fitur Izin segera hadir', 'warning');
+}
+function showSlipGaji() {
+  showToast('Slip gaji bulan ini belum tersedia', 'warning');
+}
+
 function initSwipeGesture() {
   const wrapper = document.getElementById('swipeWrapper');
   if (!wrapper) return;
