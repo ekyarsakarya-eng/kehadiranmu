@@ -1,4 +1,3 @@
-// === BAGIAN 1: INIT, LOGIN, UTILS ===
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
 const app = document.getElementById('app');
 let currentAdmin = JSON.parse(sessionStorage.getItem('admin') || 'null');
@@ -105,9 +104,7 @@ function logoutAdmin() {
   currentAdmin = null;
   renderLoginAdmin();
 }
-// === AKHIR BAGIAN 1 ===
 
-// === BAGIAN 2: DASHBOARD & DATA ABSENSI [SUDAH DIBENERIN] ===
 async function renderDashboard() {
   const stats = await apiCall('get_admin_stats', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
   app.innerHTML = `
@@ -147,12 +144,12 @@ async function renderDashboard() {
           </div>
           <p class="text-3xl font-bold text-gray-800 dark:text-white">${stats.kejadian || 0}</p>
         </div>
+      </div>
       <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
         <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Grafik Kehadiran 7 Hari Terakhir</h3>
         <canvas id="chartHadir" height="80"></canvas>
       </div>
     </div>
-  </div>
   `;
   loadChart();
 }
@@ -279,9 +276,7 @@ function exportExcel() {
   XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
   showToast('Excel berhasil didownload!', 'success');
 }
-// === AKHIR BAGIAN 2 ===
 
-// === BAGIAN 3: KELOLA USER & INIT [TIDAK DIUBAH] ===
 async function renderKelolaUser() {
   const res = await apiCall('get_all_user', { unit: isSuper? 'all' : currentAdmin.Unit_Kerja });
   allUser = res.data || [];
@@ -420,4 +415,3 @@ function renderSetting() { showToast('Fitur Setting segera hadir', 'warning'); }
   if (currentAdmin) renderDashboard();
   else renderLoginAdmin();
 })();
-// === AKHIR BAGIAN 3 ===
