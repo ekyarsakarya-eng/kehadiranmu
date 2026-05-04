@@ -105,114 +105,79 @@ function renderBottomNav(active) {
     </button>
   </div>`;
 }
-// === CONFIG & GLOBAL VAR ===
-const API_URL = 'https://script.google.com/macros/s/AKfycbwhx18lwhm5pfx_NQXwMUn8Jp5wUwiCIUdQsaM5keeJvJDpmef927M45ToDDm5vpsN1/exec';
-const LOGO_APP = 'logo.png';
-const APP_NAME = 'ABSENSI KEHADIRAN TERPADU';
-const app = document.getElementById('app');
-let currentUser = JSON.parse(sessionStorage.getItem('user') || 'null');
-let appSetting = JSON.parse(sessionStorage.getItem('setting') || '{}');
-let liveClockInterval = null;
-let absenStream = null;
-let isDarkMode = localStorage.getItem('darkMode') === 'true';
-let absenFoto = null;
-let absenTipe = 'IN';
-let currentLokasi = null;
-let patroliFoto = null;
-let kejadianFoto = null;
-let urgensiKejadian = 'Rendah';
-let rekapDataCache = [];
-let rekapPage = 0;
-const REKAP_PER_PAGE = 10;
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js');
-  });
-}
-if ('Notification' in window) Notification.requestPermission();
-
-// === UTILS ===
-function stopAllStreams() {
-  if (absenStream) {
-    absenStream.getTracks().forEach(t => t.stop());
-    absenStream = null;
-  }
-  if (liveClockInterval) {
-    clearInterval(liveClockInterval);
-    liveClockInterval = null;
-  }
-}
-
-function applyDarkMode() {
-  if (isDarkMode) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-}
-
-function toggleDarkMode() {
-  isDarkMode =!isDarkMode;
-  localStorage.setItem('darkMode', isDarkMode);
+// === LOGIN ===
+async function renderLogin() {
+  stopAllStreams();
+  sessionStorage.clear();
+  currentUser = null;
   applyDarkMode();
-  renderHome();
-}
-
-function showToast(msg, type = 'success') {
-  if (navigator.vibrate) navigator.vibrate(type === 'success'? 50 : [50, 50, 50]);
-  const toast = document.createElement('div');
-  const bg = type === 'success'? 'bg-green-500' : type === 'warning'? 'bg-orange-500' : 'bg-red-500';
-  const icon = type === 'success'? 'ri-check-line' : type === 'warning'? 'ri-alert-line' : 'ri-close-line';
-  toast.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-lg shadow-2xl z-[200] flex items-center gap-2 transition-all duration-300`;
-  toast.style.transform = 'translate(-50%, -100px)';
-  toast.innerHTML = `<i class="${icon} text-xl"></i><p class="font-semibold text-sm">${msg}</p>`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
-  setTimeout(() => {
-    toast.style.transform = 'translate(-50%, -100px)';
-    setTimeout(() => toast.remove(), 200);
-  }, 2000);
-}
-
-async function apiCall(action, payload = {}) {
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ action,...payload }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    });
-    const text = await res.text();
-    return JSON.parse(text);
-  } catch (e) {
-    showToast('Gagal konek server', 'error');
-    return { status: 'error', msg: e.message };
+  const res = await apiCall('get_setting');
+  if (res.status === 'success') {
+    appSetting = res.data;
+    sessionStorage.setItem('setting', JSON.stringify(appSetting));
   }
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h >= 4 && h < 11) return { text: 'Selamat Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
-  if (h >= 11 && h < 15) return { text: 'Selamat Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
-  if (h >= 15 && h < 18) return { text: 'Selamat Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
-  return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
-}
-
-function renderBottomNav(active) {
-  return `
-  <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
-    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
-      <i class="ri-home-5-fill text-2xl"></i>
-      <p class="font-semibold">Home</p>
-    </button>
-    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
-      <i class="ri-user-3-fill text-2xl"></i>
-      <p class="font-semibold">Account</p>
-    </button>
+  app.innerHTML = `
+  <div class="flex items-center justify-center h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-11/12 max-w-sm">
+      <img src="${LOGO_APP}" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover shadow-lg">
+      <h1 class="font-header font-extrabold text-center mb-6 text-gray-900 dark:text-white" style="font-size: clamp(16px, 4vw, 20px);">${APP_NAME}</h1>
+      <input id="username" type="text" placeholder="Username" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 rounded-2xl mb-3 focus:border-[#800000] focus:outline-none transition">
+      <div class="relative mb-3">
+        <input id="password" type="password" placeholder="Password" class="w-full border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-4 pr-12 rounded-2xl focus:border-[#800000] focus:outline-none transition">
+        <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 active:scale-90">
+          <i id="iconPassword" class="ri-eye-off-line text-xl"></i>
+        </button>
+      </div>
+      <button onclick="login()" class="w-full text-white p-4 rounded-2xl font-bold bg-gradient-to-r from-[#800000] to-[#a00000] shadow-lg active:scale-95 transition">Login</button>
+      <p id="err" class="text-red-500 text-sm mt-3 text-center"></p>
+    </div>
   </div>`;
 }
-// === HOME & DASHBOARD BARU ===
+
+function togglePassword() {
+  const input = document.getElementById('password');
+  const icon = document.getElementById('iconPassword');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'ri-eye-line text-xl';
+  } else {
+    input.type = 'password';
+    icon.className = 'ri-eye-off-line text-xl';
+  }
+}
+
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('err');
+  if (!username ||!password) {
+    showToast('Username & Password wajib diisi', 'error');
+    return;
+  }
+  errEl.innerText = 'Login...';
+  const res = await apiCall('login', { username, password });
+  if (res.status === 'success') {
+    currentUser = res.data;
+    appSetting = res.setting || {};
+    sessionStorage.setItem('user', JSON.stringify(currentUser));
+    sessionStorage.setItem('setting', JSON.stringify(appSetting));
+    showToast('Login berhasil!', 'success');
+    setTimeout(() => renderHome(), 500);
+  } else {
+    errEl.innerText = res.msg;
+    showToast(res.msg, 'error');
+  }
+}
+
+function logout() {
+  stopAllStreams();
+  sessionStorage.removeItem('user');
+  currentUser = null;
+  renderLogin();
+}
+
+// === HOME BARU ===
 function getTimeMode() {
   const h = new Date().getHours();
   if (h >= 4 && h < 11) return 'pagi';
@@ -631,7 +596,7 @@ async function renderAbsen(tipeDefault = 'IN') {
   stopAllStreams();
   absenTipe = tipeDefault;
   absenFoto = null;
-  
+
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
     <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
@@ -676,7 +641,7 @@ async function renderAbsen(tipeDefault = 'IN') {
   applyDarkMode();
   updateJamAbsen();
   setInterval(updateJamAbsen, 1000);
-  
+
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
     currentLokasi = { lat: latitude, lon: longitude };
@@ -716,7 +681,7 @@ function ambilFotoAbsen() {
   const video = document.getElementById('cameraAbsen');
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  
+
   const maxSize = 800;
   let width = video.videoWidth;
   let height = video.videoHeight;
@@ -731,20 +696,20 @@ function ambilFotoAbsen() {
       height = maxSize;
     }
   }
-  
+
   canvas.width = width;
   canvas.height = height;
   ctx.drawImage(video, 0, 0, width, height);
-  
+
   absenFoto = canvas.toDataURL('image/jpeg', 0.6);
-  
+
   const preview = document.getElementById('previewAbsen');
   preview.src = absenFoto;
   preview.classList.remove('hidden');
   video.classList.add('hidden');
   document.getElementById('btnCapture').classList.add('hidden');
   document.getElementById('btnSubmitAbsen').disabled = false;
-  
+
   if (absenStream) {
     absenStream.getTracks().forEach(track => track.stop());
     absenStream = null;
@@ -760,12 +725,12 @@ async function submitAbsen() {
   const btn = document.getElementById('btnSubmitAbsen');
   btn.disabled = true;
   btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
-  
+
   let lat = null, lon = null;
   try {
     const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000
-});
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+    });
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
   } catch (e) {
@@ -812,6 +777,7 @@ async function renderRekap() {
         <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
       </div>
     </div>
+  </div>
   ${renderBottomNav('home')}`;
   applyDarkMode();
   loadRekapBulan();
@@ -985,6 +951,7 @@ function showDetailTanggal(day, status, idx) {
         <p class="font-bold text-lg text-gray-800 dark:text-white">Tanggal ${day}</p>
         <p class="text-xs ${warnaStatus} font-semibold">${labelStatus}</p>
       </div>
+    </div>
     <div class="grid grid-cols-3 gap-3 text-center mb-3">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Masuk</p>
@@ -1242,7 +1209,6 @@ async function renderDarurat() {
         <i class="ri-alarm-warning-line"></i> Kirim Laporan Darurat
       </button>
     </div>
-  </div>
   ${renderBottomNav('home')}`;
   applyDarkMode();
 }
