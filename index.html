@@ -33,6 +33,28 @@
     --accent-gradient: linear-gradient(135deg, #800000, #600000);
     --accent-glow: rgba(128, 0, 0, 0.4);
   }
+
+  /* Paksa semua biru/ungu jadi maroon */
+ .bg-blue-500,.bg-blue-600,.bg-purple-500,.bg-purple-600,
+  [style*="linear-gradient"][style*="rgb(59, 130, 246)"],
+  [style*="linear-gradient"][style*="rgb(168, 85, 247)"] {
+    background: var(--accent-gradient)!important;
+  }
+
+  /* Kuning jadi krem */
+ .bg-yellow-500,.bg-yellow-600 {
+    background-color: #f5e6d3!important;
+    color: #800000!important;
+  }
+
+  /* Badge "Belum" */
+ .bg-yellow-500.text-xs {
+    background-color: #e8d5c4!important;
+    color: #600000!important;
+  }
+
+  /* Tombol nav aktif */
+ .text-\[\#800000\] { color: #800000!important; }
     [data-time="pagi"] {
       --accent-primary: #f59e0b;
       --accent-gradient: linear-gradient(135deg, #f59e0b, #d97706);
