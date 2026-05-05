@@ -15,25 +15,41 @@
   <style>
     /* === TEMA MAROON FULL === */
     :root {
-      --accent-primary: #800000 !important;
-      --accent-secondary: #a00000 !important;
-      --accent-gradient: linear-gradient(135deg, #800000, #600000) !important;
-      --accent-glow: rgba(128, 0, 0, 0.4) !important;
+      --accent-primary: #800000;
+      --accent-secondary: #a00000;
+      --accent-gradient: linear-gradient(135deg, #800000, #600000);
+      --accent-glow: rgba(128, 0, 0, 0.4);
+      --bg-light: #fdf8f3; /* Krem soft, ga pucat */
+      --bg-dark: #1a1a1a;
     }
 
-    /* Paksa semua ungu/biru jadi maroon */
-    .bg-purple-500, .bg-purple-600, .bg-purple-700,
-    .bg-blue-500, .bg-blue-600, .bg-blue-700,
-    .from-purple-500, .to-purple-600, .from-blue-500, .to-blue-600,
-    [class*="purple"], [class*="blue"] {
+    /* Background light mode ga pucat */
+    body { background-color: var(--bg-light); }
+    .dark body { background-color: var(--bg-dark) !important; }
+
+    /* Card light mode krem soft */
+    .bg-white { background-color: #fffaf5 !important; }
+    .dark .bg-white { background-color: #1f2937 !important; }
+
+    /* Bg gray jadi krem */
+    .bg-gray-50 { background-color: var(--bg-light) !important; }
+    .dark .bg-gray-50 { background-color: var(--bg-dark) !important; }
+    .dark .bg-gray-800 { background-color: #1f2937 !important; }
+    .dark .bg-gray-900 { background-color: #111827 !important; }
+
+    /* Paksa semua ungu/biru jadi maroon - TAPI JANGAN TIMPA DARKMODE */
+    :not(.dark) .bg-purple-500, :not(.dark) .bg-purple-600, :not(.dark) .bg-purple-700,
+    :not(.dark) .bg-blue-500, :not(.dark) .bg-blue-600, :not(.dark) .bg-blue-700,
+    :not(.dark) .from-purple-500, :not(.dark) .to-purple-600, 
+    :not(.dark) .from-blue-500, :not(.dark) .to-blue-600 {
       background: var(--accent-gradient) !important;
     }
 
-    /* Timpa inline style gradient */
-    [style*="--accent-gradient"],
-    [style*="rgb(168, 85, 247)"],
-    [style*="rgb(139, 92, 246)"],
-    [style*="rgb(59, 130, 246)"] {
+    /* Timpa inline style - TAPI JANGAN DI DARKMODE */
+    :not(.dark) [style*="--accent-gradient"],
+    :not(.dark) [style*="rgb(168, 85, 247)"],
+    :not(.dark) [style*="rgb(139, 92, 246)"],
+    :not(.dark) [style*="rgb(59, 130, 246)"] {
       background: linear-gradient(135deg, #800000, #600000) !important;
     }
 
@@ -51,7 +67,8 @@
 
     /* Text warna */
     .text-\[\#800000\] { color: #800000 !important; }
-    .text-purple-500, .text-purple-600, .text-blue-500, .text-blue-600 {
+    :not(.dark) .text-purple-500, :not(.dark) .text-purple-600, 
+    :not(.dark) .text-blue-500, :not(.dark) .text-blue-600 {
       color: #800000 !important;
     }
 
@@ -130,7 +147,7 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 select-none">
+<body class="select-none">
   <div id="app"></div>
   <script src="./app.js"></script>
 </body>
