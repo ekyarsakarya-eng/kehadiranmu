@@ -273,7 +273,6 @@ async function renderHome() {
       <button onclick="showQuickMenu()" class="active:scale-90 transition ripple"><i class="ri-menu-line"></i></button>
     </div>
   </div>
-
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen" id="pullToRefresh">
     <div class="mb-4 animate-slide-up-bounce" style="animation-delay: 0.1s">
       <div class="flex items-center justify-between mb-1">
@@ -307,6 +306,7 @@ async function renderHome() {
             <div class="absolute inset-0 flex flex-col items-center justify-center">
               <p id="persenHadir" class="text-2xl font-extrabold text-gray-900 dark:text-white">0%</p>
               <p class="text- text-gray-500">Hadir</p>
+            </div>
             </div>
           <div class="flex-1">
             <div class="grid grid-cols-3 gap-2 text-center mb-2">
