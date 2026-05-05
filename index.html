@@ -13,139 +13,103 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
   
   <style>
-    /* === TEMA MAROON FULL === */
-    :root {
-      --accent-primary: #800000;
-      --accent-secondary: #a00000;
-      --accent-gradient: linear-gradient(135deg, #800000, #600000);
-      --accent-glow: rgba(128, 0, 0, 0.4);
-      --bg-light: #fdf8f3; /* Krem soft, ga pucat */
-      --bg-dark: #1a1a1a;
-    }
+  /* === TEMA MAROON + PALETTE PENDAMPING === */
+  :root {
+    --accent-primary: #800000;
+    --accent-secondary: #a00000;
+    --accent-gradient: linear-gradient(135deg, #800000, #600000);
+    --accent-glow: rgba(128, 0, 0, 0.4);
+    
+    /* Light mode */
+    --bg-light: #fdf8f3; /* Krem soft */
+    --card-light: #fffaf5; /* Krem muda */
+    --text-light: #1f2937; /* Abu gelap, bukan hitam pekat */
+    
+    /* Dark mode */
+    --bg-dark: #0f1419; /* Biru gelap, bukan hitam pekat */
+    --card-dark: #1a1f26; /* Biru keabuan */
+    --text-dark: #f5e6d3; /* Krem untuk teks, bukan putih */
+    
+    /* Warna aksen yang cocok sama maroon */
+    --cream: #f5e6d3; /* Krem utama */
+    --cream-dark: #e8d5c4; /* Krem gelap buat badge */
+    --gold: #d4a574; /* Emas soft buat highlight */
+    --gray-soft: #6b7280; /* Abu soft */
+  }
 
-    /* Background light mode ga pucat */
-    body { background-color: var(--bg-light); }
-    .dark body { background-color: var(--bg-dark) !important; }
+  /* Background */
+  body { background-color: var(--bg-light); color: var(--text-light); }
+  .dark body { background-color: var(--bg-dark) !important; color: var(--text-dark) !important; }
 
-    /* Card light mode krem soft */
-    .bg-white { background-color: #fffaf5 !important; }
-    .dark .bg-white { background-color: #1f2937 !important; }
+  /* Card */
+  .bg-white { background-color: var(--card-light) !important; }
+  .dark .bg-white { background-color: var(--card-dark) !important; }
+  .bg-gray-50 { background-color: var(--bg-light) !important; }
+  .dark .bg-gray-50 { background-color: var(--bg-dark) !important; }
+  .dark .bg-gray-800 { background-color: var(--card-dark) !important; }
+  .dark .bg-gray-900 { background-color: #0a0e14 !important; }
 
-    /* Bg gray jadi krem */
-    .bg-gray-50 { background-color: var(--bg-light) !important; }
-    .dark .bg-gray-50 { background-color: var(--bg-dark) !important; }
-    .dark .bg-gray-800 { background-color: #1f2937 !important; }
-    .dark .bg-gray-900 { background-color: #111827 !important; }
+  /* === TEXT DARKMODE - FIX UTAMA === */
+  .dark .text-gray-900 { color: var(--text-dark) !important; } /* Ini yang bikin item ga keliatan */
+  .dark .text-gray-800 { color: #e5e7eb !important; }
+  .dark .text-gray-700 { color: #d1d5db !important; }
+  .dark .text-gray-600 { color: #9ca3af !important; }
+  .dark .text-gray-500 { color: #6b7280 !important; }
+  .dark .text-gray-400 { color: #6b7280 !important; }
 
-    /* Paksa semua ungu/biru jadi maroon - TAPI JANGAN TIMPA DARKMODE */
-    :not(.dark) .bg-purple-500, :not(.dark) .bg-purple-600, :not(.dark) .bg-purple-700,
-    :not(.dark) .bg-blue-500, :not(.dark) .bg-blue-600, :not(.dark) .bg-blue-700,
-    :not(.dark) .from-purple-500, :not(.dark) .to-purple-600, 
-    :not(.dark) .from-blue-500, :not(.dark) .to-blue-600 {
-      background: var(--accent-gradient) !important;
-    }
+  /* Header tetap maroon */
+  .dark .bg-white.shadow-sm { background-color: #1a1f26 !important; }
 
-    /* Timpa inline style - TAPI JANGAN DI DARKMODE */
-    :not(.dark) [style*="--accent-gradient"],
-    :not(.dark) [style*="rgb(168, 85, 247)"],
-    :not(.dark) [style*="rgb(139, 92, 246)"],
-    :not(.dark) [style*="rgb(59, 130, 246)"] {
-      background: linear-gradient(135deg, #800000, #600000) !important;
-    }
+  /* Paksa ungu/biru jadi maroon - cuma di light mode */
+  :not(.dark) .bg-purple-500, :not(.dark) .bg-purple-600, :not(.dark) .bg-purple-700,
+  :not(.dark) .bg-blue-500, :not(.dark) .bg-blue-600, :not(.dark) .bg-blue-700 {
+    background: var(--accent-gradient) !important;
+  }
 
-    /* Kuning jadi krem */
-    .bg-yellow-500, .bg-yellow-600 {
-      background-color: #f5e6d3 !important;
-      color: #800000 !important;
-    }
+  /* Krem untuk card statistik */
+  .bg-\[\#f5e6d3\] { background-color: var(--cream) !important; }
+  .dark .bg-\[\#f5e6d3\] { 
+    background-color: #2d1b1b !important; /* Maroon gelap transparan */
+    color: var(--cream) !important; 
+  }
 
-    /* Badge status */
-    .bg-yellow-500.text-xs {
-      background-color: #e8d5c4 !important;
-      color: #600000 !important;
-    }
+  /* Badge */
+  .bg-\[\#e8d5c4\] { background-color: var(--cream-dark) !important; }
+  .dark .bg-\[\#e8d5c4\] { 
+    background-color: #3d2424 !important; 
+    color: var(--cream) !important; 
+  }
 
-    /* Text warna */
-    .text-\[\#800000\] { color: #800000 !important; }
-    :not(.dark) .text-purple-500, :not(.dark) .text-purple-600, 
-    :not(.dark) .text-blue-500, :not(.dark) .text-blue-600 {
-      color: #800000 !important;
-    }
+  /* Text maroon tetep maroon di darkmode tapi lebih terang */
+  .text-\[\#800000\] { color: #800000 !important; }
+  .dark .text-\[\#800000\] { color: var(--gold) !important; } /* Emas di darkmode */
 
-    /* === ANIMASI === */
-    @keyframes slideUpBounce {
-      0% { transform: translateY(20px); opacity: 0; }
-      60% { transform: translateY(-5px); }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-    .animate-slide-up-bounce { animation: slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  /* === ANIMASI === */
+  @keyframes slideUpBounce {
+    0% { transform: translateY(20px); opacity: 0; }
+    60% { transform: translateY(-5px); }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .animate-slide-up-bounce { animation: slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-    @keyframes glow {
-      0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
-      50% { box-shadow: 0 0 20px var(--accent-glow); }
-    }
-    .animate-glow { animation: glow 2s ease-in-out infinite; }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+    50% { box-shadow: 0 0 20px var(--accent-glow); }
+  }
+  .animate-glow { animation: glow 2s ease-in-out infinite; }
 
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-    .shimmer::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      animation: shimmer 2s infinite;
-    }
+  /* === FONT === */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .font-header { font-family: 'Inter', sans-serif; font-weight: 900; }
 
-    /* === GLASS EFFECT === */
-    .glass {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .dark .glass {
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    /* === RIPPLE === */
-    .ripple {
-      position: relative;
-      overflow: hidden;
-    }
-    .ripple:active::after {
-      content: '';
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 0; height: 0;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.5);
-      transform: translate(-50%, -50%);
-      animation: rippleEffect 0.6s ease-out;
-    }
-    @keyframes rippleEffect {
-      to { width: 300px; height: 300px; opacity: 0; }
-    }
-
-    /* === FONT === */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    .font-header { font-family: 'Inter', sans-serif; font-weight: 900; }
-
-    /* === SCROLL === */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #800000; border-radius: 3px; }
-    .dark ::-webkit-scrollbar-track { background: #1f2937; }
-    .dark ::-webkit-scrollbar-thumb { background: #a00000; }
-
-    /* === SAFE AREA === */
-    body { 
-      padding-bottom: env(safe-area-inset-bottom);
-      -webkit-tap-highlight-color: transparent;
-    }
-  </style>
+  /* === SCROLL === */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-light); }
+  ::-webkit-scrollbar-thumb { background: #800000; border-radius: 3px; }
+  .dark ::-webkit-scrollbar-track { background: var(--bg-dark); }
+  .dark ::-webkit-scrollbar-thumb { background: #a00000; }
+</style>
 </head>
 <body class="select-none">
   <div id="app"></div>
