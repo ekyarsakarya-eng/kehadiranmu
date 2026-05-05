@@ -1,115 +1,137 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#800000">
-  <link rel="apple-touch-icon" href="logo.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Absensi Satpam Terpadu</title>
+  <meta name="theme-color" content="#800000">
+  <title>ABSENSI KEHADIRAN TERPADU</title>
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./logo.png">
+  
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            'header': ['Montserrat', 'sans-serif'],
-            'sans': ['Inter', 'sans-serif']
-          }
-        }
-      }
-    }
-  </script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+  
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: 'Inter', sans-serif; }
-
+    /* === TEMA MAROON FULL === */
     :root {
-    --accent-primary: #800000;
-    --accent-secondary: #a00000;
-    --accent-gradient: linear-gradient(135deg, #800000, #600000);
-    --accent-glow: rgba(128, 0, 0, 0.4);
-  }
-
-  /* Paksa semua biru/ungu jadi maroon */
- .bg-blue-500,.bg-blue-600,.bg-purple-500,.bg-purple-600,
-  [style*="linear-gradient"][style*="rgb(59, 130, 246)"],
-  [style*="linear-gradient"][style*="rgb(168, 85, 247)"] {
-    background: var(--accent-gradient)!important;
-  }
-
-  /* Kuning jadi krem */
- .bg-yellow-500,.bg-yellow-600 {
-    background-color: #f5e6d3!important;
-    color: #800000!important;
-  }
-
-  /* Badge "Belum" */
- .bg-yellow-500.text-xs {
-    background-color: #e8d5c4!important;
-    color: #600000!important;
-  }
-
-  /* Tombol nav aktif */
- .text-\[\#800000\] { color: #800000!important; }
-    [data-time="pagi"] {
-      --accent-primary: #f59e0b;
-      --accent-gradient: linear-gradient(135deg, #f59e0b, #d97706);
-      --accent-glow: rgba(245,158,11,0.4);
-    }
-    [data-time="siang"] {
-      --accent-primary: #3b82f6;
-      --accent-gradient: linear-gradient(135deg, #3b82f6, #2563eb);
-      --accent-glow: rgba(59,130,246,0.4);
-    }
-    [data-time="sore"] {
-      --accent-primary: #8b5cf6;
-      --accent-gradient: linear-gradient(135deg, #8b5cf6, #7c3aed);
-      --accent-glow: rgba(139,92,246,0.4);
-    }
-    [data-time="malam"] {
-      --accent-primary: #6366f1;
-      --accent-gradient: linear-gradient(135deg, #6366f1, #4f46e5);
-      --accent-glow: rgba(99,102,241,0.4);
+      --accent-primary: #800000 !important;
+      --accent-secondary: #a00000 !important;
+      --accent-gradient: linear-gradient(135deg, #800000, #600000) !important;
+      --accent-glow: rgba(128, 0, 0, 0.4) !important;
     }
 
+    /* Paksa semua ungu/biru jadi maroon */
+    .bg-purple-500, .bg-purple-600, .bg-purple-700,
+    .bg-blue-500, .bg-blue-600, .bg-blue-700,
+    .from-purple-500, .to-purple-600, .from-blue-500, .to-blue-600,
+    [class*="purple"], [class*="blue"] {
+      background: var(--accent-gradient) !important;
+    }
+
+    /* Timpa inline style gradient */
+    [style*="--accent-gradient"],
+    [style*="rgb(168, 85, 247)"],
+    [style*="rgb(139, 92, 246)"],
+    [style*="rgb(59, 130, 246)"] {
+      background: linear-gradient(135deg, #800000, #600000) !important;
+    }
+
+    /* Kuning jadi krem */
+    .bg-yellow-500, .bg-yellow-600 {
+      background-color: #f5e6d3 !important;
+      color: #800000 !important;
+    }
+
+    /* Badge status */
+    .bg-yellow-500.text-xs {
+      background-color: #e8d5c4 !important;
+      color: #600000 !important;
+    }
+
+    /* Text warna */
+    .text-\[\#800000\] { color: #800000 !important; }
+    .text-purple-500, .text-purple-600, .text-blue-500, .text-blue-600 {
+      color: #800000 !important;
+    }
+
+    /* === ANIMASI === */
     @keyframes slideUpBounce {
-      0% { transform: translateY(30px); opacity: 0; }
+      0% { transform: translateY(20px); opacity: 0; }
       60% { transform: translateY(-5px); }
       100% { transform: translateY(0); opacity: 1; }
     }
+    .animate-slide-up-bounce { animation: slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
     @keyframes glow {
-      0%, 100% { box-shadow: 0 20px var(--accent-glow); }
-      50% { box-shadow: 0 0 30px var(--accent-glow), 0 0 40px var(--accent-glow); }
+      0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+      50% { box-shadow: 0 0 20px var(--accent-glow); }
     }
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-    .animate-slide-up-bounce { animation: slideUpBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
     .animate-glow { animation: glow 2s ease-in-out infinite; }
-    .shimmer {
-      background: linear-gradient(90deg, transparent, rgba(255,255,0.3), transparent);
-      background-size: 200% 100%;
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
       animation: shimmer 2s infinite;
     }
+
+    /* === GLASS EFFECT === */
     .glass {
-      background: rgba(255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,0.2);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    .dark.glass {
-      background: rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,0.1);
+    .dark .glass {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
+    /* === RIPPLE === */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .ripple:active::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      transform: translate(-50%, -50%);
+      animation: rippleEffect 0.6s ease-out;
+    }
+    @keyframes rippleEffect {
+      to { width: 300px; height: 300px; opacity: 0; }
+    }
+
+    /* === FONT === */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-header { font-family: 'Inter', sans-serif; font-weight: 900; }
+
+    /* === SCROLL === */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #800000; border-radius: 3px; }
+    .dark ::-webkit-scrollbar-track { background: #1f2937; }
+    .dark ::-webkit-scrollbar-thumb { background: #a00000; }
+
+    /* === SAFE AREA === */
+    body { 
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors">
+<body class="bg-gray-50 dark:bg-gray-900 select-none">
   <div id="app"></div>
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
