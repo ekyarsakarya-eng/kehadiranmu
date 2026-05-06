@@ -37,12 +37,22 @@ function stopAllStreams() {
   }
 }
 
+function getTimeMode() {
+  const h = new Date().getHours();
+  if (h >= 4 && h < 11) return 'pagi';
+  if (h >= 11 && h < 15) return 'siang';
+  if (h >= 15 && h < 18) return 'sore';
+  return 'malam';
+}
+
 function applyDarkMode() {
   if (isDarkMode) {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');
   }
+  // FIX: Set data-time buat ganti warna maroon ke gold
+  document.documentElement.setAttribute('data-time', getTimeMode());
 }
 
 function toggleDarkMode() {
@@ -86,20 +96,36 @@ async function apiCall(action, payload = {}) {
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h >= 4 && h < 11) return { text: 'Selamat Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
-  if (h >= 11 && h < 15) return { text: 'Selamat Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
-  if (h >= 15 && h < 18) return { text: 'Selamat Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
-  return { text: 'Selamat Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
+  if (h >= 4 && h < 11) return { text: 'Pagi', icon: 'ri-sun-line', color: 'text-yellow-500' };
+  if (h >= 11 && h < 15) return { text: 'Siang', icon: 'ri-sun-cloudy-line', color: 'text-orange-500' };
+  if (h >= 15 && h < 18) return { text: 'Sore', icon: 'ri-sun-foggy-line', color: 'text-orange-600' };
+  return { text: 'Malam', icon: 'ri-moon-clear-line', color: 'text-indigo-400' };
+}
+
+function formatTanggal(date) {
+  return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function updateWaktu() {
+  if (liveClockInterval) clearInterval(liveClockInterval);
+  function update() {
+    const now = new Date();
+    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const el = document.getElementById('jamDigital');
+    if (el) el.innerText = jam;
+  }
+  update();
+  liveClockInterval = setInterval(update, 1000);
 }
 
 function renderBottomNav(active) {
   return `
   <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex justify-around text-xs py-3 shadow-2xl">
-    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+    <button onclick="renderHome()" class="flex flex-col items-center gap-1 ${active === 'home'? 'text-[#800000] dark:text-[var(--accent-primary)]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
       <i class="ri-home-5-fill text-2xl"></i>
       <p class="font-semibold">Home</p>
     </button>
-    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
+    <button onclick="renderAccount()" class="flex flex-col items-center gap-1 ${active === 'account'? 'text-[#800000] dark:text-[var(--accent-primary)]' : 'text-gray-500 dark:text-gray-400'} active:scale-90 transition">
       <i class="ri-user-3-fill text-2xl"></i>
       <p class="font-semibold">Account</p>
     </button>
@@ -177,250 +203,149 @@ function logout() {
   renderLogin();
 }
 
-// === HOME & DASHBOARD BARU ===
-function getTimeMode() {
-  const h = new Date().getHours();
-  if (h >= 4 && h < 11) return 'pagi';
-  if (h >= 11 && h < 15) return 'siang';
-  if (h >= 15 && h < 18) return 'sore';
-  return 'malam';
-}
-
-function startLiveClock() {
-  if (liveClockInterval) clearInterval(liveClockInterval);
-  function update() {
-    const now = new Date();
-    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const tgl = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const clockEl = document.getElementById('liveClock');
-    const dateEl = document.getElementById('liveDate');
-    if (clockEl) clockEl.innerText = jam;
-    if (dateEl) dateEl.innerText = tgl;
-  }
-  update();
-  liveClockInterval = setInterval(update, 1000);
-}
-
-function initSwipeGesture() {
-  const wrapper = document.getElementById('swipeWrapper');
-  if (!wrapper) return;
-  let startX = 0, currentX = 0, isDragging = false;
-  const handleStart = (e) => {
-    startX = e.type.includes('mouse')? e.clientX : e.touches[0].clientX;
-    isDragging = true;
-    wrapper.style.cursor = 'grabbing';
-  };
-  const handleMove = (e) => {
-    if (!isDragging) return;
-    currentX = e.type.includes('mouse')? e.clientX : e.touches[0].clientX;
-  };
-  const handleEnd = () => {
-    if (!isDragging) return;
-    isDragging = false;
-    wrapper.style.cursor = 'grab';
-    const diff = startX - currentX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0 && window.swipeCurrentCard === 0) swipeCard(1);
-      else if (diff < 0 && window.swipeCurrentCard === 1) swipeCard(0);
-    }
-  };
-  wrapper.addEventListener('touchstart', handleStart, { passive: true });
-  wrapper.addEventListener('touchmove', handleMove, { passive: true });
-  wrapper.addEventListener('touchend', handleEnd, { passive: true });
-  wrapper.addEventListener('mousedown', handleStart);
-  wrapper.addEventListener('mousemove', handleMove);
-  wrapper.addEventListener('mouseup', handleEnd);
-  wrapper.addEventListener('mouseleave', handleEnd);
-  window.swipeCurrentCard = 0;
-}
-
-function swipeCard(idx) {
-  window.swipeCurrentCard = idx;
-  const container = document.getElementById('swipeContainer');
-  if (container) container.style.transform = `translateX(-${idx * 100}%)`;
-  document.getElementById('dot-0').className = idx === 0? 'w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300' : 'w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300';
-  document.getElementById('dot-1').className = idx === 1? 'w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300' : 'w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300';
-}
-
+// === HOME & DASHBOARD ===
 function renderHome() {
+  const greeting = getGreeting();
   const html = `
-    <div class="min-h-screen pb-24" style="background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);">
-      <div class="dark" style="background: linear-gradient(to bottom, #111827, #1f2937);">
-        <!-- HEADER: LOGO TENGAH ATAS -->
-        <div class="px-4 pt-6 pb-4">
-          <div class="flex flex-col items-center gap-3 mb-4">
-            <!-- Baris 1: Lonceng + Logo + Menu -->
-            <div class="w-full flex items-center justify-between">
-              <button class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
-                <i class="ri-notification-3-line text-gray-800 dark:text-white"></i>
-              </button>
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center shadow-lg animate-glow">
-                <img src="${LOGO_URL}" class="w-10 h-10 object-contain" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'ri-hospital-line text-white text-2xl\\'></i>'"/>
-              </div>
-              <button onclick="toggleSidebar()" class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
-                <i class="ri-menu-line text-gray-800 dark:text-white"></i>
-              </button>
+    <div class="min-h-screen pb-24 bg-gray-100 dark:bg-gray-900">
+      <div class="px-4 pt-6 pb-4">
+        <div class="flex flex-col items-center gap-3 mb-4">
+          <div class="w-full flex items-center justify-between">
+            <button class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
+              <i class="ri-notification-3-line text-gray-800 dark:text-white"></i>
+            </button>
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center shadow-lg animate-glow">
+              <img src="${LOGO_APP}" class="w-10 h-10 object-contain" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'ri-hospital-line text-white text-2xl\\'></i>'"/>
             </div>
-            <!-- Baris 2: Sapaan -->
-            <div class="text-center">
-              <p class="text-xs text-gray-500 dark:text-gray-400">Selamat ${getGreeting()}!</p>
-              <h1 class="font-header text-xl font-black text-gray-900 dark:text-white">${currentUser.Nama}</h1>
-              <p class="text-xs text-gray-600 dark:text-gray-300">${currentUser.Unit_Kerja}</p>
+            <button onclick="toggleDarkMode()" class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
+              <i class="ri-${isDarkMode? 'sun' : 'moon'}-line text-gray-800 dark:text-white"></i>
+            </button>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Selamat ${greeting.text}!</p>
+            <h1 class="font-header text-xl font-black text-gray-900 dark:text-white">${currentUser.Nama}</h1>
+            <p class="text-xs text-gray-600 dark:text-gray-300">${currentUser.Unit_Kerja}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 -mt-2">
+        <div class="card-maroon rounded-3xl p-5 shadow-2xl animate-slide-up-bounce">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <p class="text-white/80 text-xs font-medium">Status Hari Ini</p>
+              <p class="text-white font-header font-bold text-lg" id="tanggalHariIni">${formatTanggal(new Date())}</p>
+            </div>
+            <div id="statusAbsenHariIni" class="px-3 py-1 rounded-full glass text-white text-xs font-bold">
+              <i class="ri-loader-4-line animate-spin"></i>
+            </div>
+          </div>
+
+          <div class="text-center my-6">
+            <div class="inline-block">
+              <div class="text-white font-header font-black text-5xl tabular-nums tracking-tight" id="jamDigital">00:00:00</div>
+              <div class="text-white/60 text-xs mt-1 font-medium">WIB - Asia/Jakarta</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass rounded-2xl p-3">
+              <div class="flex items-center gap-2 mb-1">
+                <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <i class="ri-login-box-line text-green-400"></i>
+                </div>
+                <span class="text-white/80 text-xs font-medium">Masuk</span>
+              </div>
+              <p class="text-white font-bold text-lg tabular-nums" id="jamMasukToday">-</p>
+            </div>
+            <div class="glass rounded-2xl p-3">
+              <div class="flex items-center gap-2 mb-1">
+                <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                  <i class="ri-logout-box-line text-red-400"></i>
+                </div>
+                <span class="text-white/80 text-xs font-medium">Pulang</span>
+              </div>
+              <p class="text-white font-bold text-lg tabular-nums" id="jamPulangToday">-</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="renderAbsen('IN')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
+              <i class="ri-login-box-line text-2xl block mb-1"></i>
+              <p class="text-sm">Masuk</p>
+            </button>
+            <button onclick="renderAbsen('OUT')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
+              <i class="ri-logout-box-line text-2xl block mb-1"></i>
+              <p class="text-sm">Pulang</p>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 mt-6">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-header font-bold text-gray-900 dark:text-white">Statistik Bulan Ini</h3>
+            <button onclick="renderRekap()" class="text-xs font-semibold text-red-800 dark:text-amber-400">
+              Lihat Detail <i class="ri-arrow-right-line"></i>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl">
+              <div class="w-10 h-10 rounded-xl bg-green-500 mx-auto mb-2 flex items-center justify-center">
+                <i class="ri-checkbox-circle-fill text-white text-xl"></i>
+              </div>
+              <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statHadirHome">0</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Hadir</p>
+            </div>
+            <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl">
+              <div class="w-10 h-10 rounded-xl bg-yellow-500 mx-auto mb-2 flex items-center justify-center">
+                <i class="ri-file-list-3-fill text-white text-xl"></i>
+              </div>
+              <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statIzinHome">0</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Izin</p>
+            </div>
+            <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl">
+              <div class="w-10 h-10 rounded-xl bg-red-500 mx-auto mb-2 flex items-center justify-center">
+                <i class="ri-close-circle-fill text-white text-xl"></i>
+              </div>
+              <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statAlpaHome">0</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Alpa</p>
+            </div>
+          </div>
+
+          <div class="relative">
+            <svg class="w-full" viewBox="0 0 100 50">
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#800000;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#a00000;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M 10 40 A 40 40 0 0 1 90 40" fill="none" stroke="#e5e7eb" stroke-width="8" class="dark:stroke-gray-700"/>
+              <path id="progressRing" d="M 10 40 A 40 40 0 0 1 90 40" fill="none" stroke="url(#progressGradient)" stroke-width="8" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="239" style="transition: stroke-dashoffset 1s ease-out"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pt-4">
+              <p class="text-3xl font-black text-gray-900 dark:text-white tabular-nums" id="persenHadir">0%</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Kehadiran</p>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- CARD MAROON -->
-        <div class="px-4 -mt-2">
-          <div class="card-maroon rounded-3xl p-5 shadow-2xl animate-slide-up-bounce">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <p class="text-white/80 text-xs font-medium">Status Hari Ini</p>
-                <p class="text-white font-header font-bold text-lg" id="tanggalHariIni">${formatTanggal(new Date())}</p>
-              </div>
-              <div id="statusAbsenHariIni" class="px-3 py-1 rounded-full glass text-white text-xs font-bold">
-                <i class="ri-loader-4-line animate-spin"></i>
-              </div>
-            </div>
-
-            <!-- JAM REALTIME -->
-            <div class="text-center my-6">
-              <div class="inline-block">
-                <div class="text-white font-header font-black text-5xl tabular-nums tracking-tight" id="jamDigital">00:00:00</div>
-                <div class="text-white/60 text-xs mt-1 font-medium">WIB - Asia/Jakarta</div>
-              </div>
-            </div>
-
-            <!-- JAM MASUK & PULANG -->
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <div class="glass rounded-2xl p-3">
-                <div class="flex items-center gap-2 mb-1">
-                  <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                    <i class="ri-login-box-line text-green-400"></i>
-                  </div>
-                  <span class="text-white/80 text-xs font-medium">Masuk</span>
-                </div>
-                <p class="text-white font-bold text-lg tabular-nums" id="jamMasukToday">-</p>
-              </div>
-              <div class="glass rounded-2xl p-3">
-                <div class="flex items-center gap-2 mb-1">
-                  <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
-                    <i class="ri-logout-box-line text-red-400"></i>
-                  </div>
-                  <span class="text-white/80 text-xs font-medium">Pulang</span>
-                </div>
-                <p class="text-white font-bold text-lg tabular-nums" id="jamPulangToday">-</p>
-              </div>
-            </div>
-
-            <!-- TOMBOL ABSEN -->
-            <div class="grid grid-cols-2 gap-3">
-              <button onclick="bukaKameraAbsen('IN')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
-                <i class="ri-login-box-line text-2xl block mb-1"></i>
-                <p class="text-sm">Masuk</p>
-              </button>
-              <button onclick="bukaKameraAbsen('OUT')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
-                <i class="ri-logout-box-line text-2xl block mb-1"></i>
-                <p class="text-sm">Pulang</p>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- STATISTIK BULAN INI -->
-        <div class="px-4 mt-6">
-          <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-header font-bold text-gray-900 dark:text-white">Statistik Bulan Ini</h3>
-              <button onclick="renderRekap()" class="text-xs font-semibold text-red-800 dark:text-amber-400">
-                Lihat Detail <i class="ri-arrow-right-line"></i>
-              </button>
-            </div>
-            
-            <div class="grid grid-cols-3 gap-3 mb-4">
-              <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl">
-                <div class="w-10 h-10 rounded-xl bg-green-500 mx-auto mb-2 flex items-center justify-center">
-                  <i class="ri-checkbox-circle-fill text-white text-xl"></i>
-                </div>
-                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statHadirHome">0</p>
-                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Hadir</p>
-              </div>
-              <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl">
-                <div class="w-10 h-10 rounded-xl bg-yellow-500 mx-auto mb-2 flex items-center justify-center">
-                  <i class="ri-file-list-3-fill text-white text-xl"></i>
-                </div>
-                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statIzinHome">0</p>
-                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Izin</p>
-              </div>
-              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl">
-                <div class="w-10 h-10 rounded-xl bg-red-500 mx-auto mb-2 flex items-center justify-center">
-                  <i class="ri-close-circle-fill text-white text-xl"></i>
-                </div>
-                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statAlpaHome">0</p>
-                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Alpa</p>
-              </div>
-            </div>
-
-            <!-- PROGRESS RING -->
-            <div class="relative">
-              <svg class="w-full" viewBox="0 0 100 50">
-                <defs>
-                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" style="stop-color:#800000;stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#a00000;stop-opacity:1" />
-                  </linearGradient>
-                </defs>
-                <path d="M 10 40 A 40 0 0 1 90 40" fill="none" stroke="#e5e7eb" stroke-width="8" class="dark:stroke-gray-700"/>
-                <path id="progressRing" d="M 10 40 A 40 40 0 0 1 90 40" fill="none" stroke="url(#progressGradient)" stroke-width="8" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="239" style="transition: stroke-dashoffset 1s ease-out"/>
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center pt-4">
-                <p class="text-3xl font-black text-gray-900 dark:text-white tabular-nums" id="persenHadir">0%</p>
-                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Kehadiran</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AKTIVITAS TERAKHIR -->
-        <div class="px-4 mt-6">
-          <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
-            <h3 class="font-header font-bold text-gray-900 dark:text-white mb-4">Aktivitas Terakhir</h3>
-            <div id="aktivitasTerakhir" class="space-y-3">
-              <div class="flex items-center justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div>
-              </div>
+      <div class="px-4 mt-6">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
+          <h3 class="font-header font-bold text-gray-900 dark:text-white mb-4">Aktivitas Terakhir</h3>
+          <div id="aktivitasTerakhir" class="space-y-3">
+            <div class="flex items-center justify-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- BOTTOM NAV -->
-    <div class="fixed bottom-0 left-0 right-0 max-w- mx-auto bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-2xl">
-      <div class="grid grid-cols-5 gap-1 px-2 py-3">
-        <button class="ripple flex flex-col items-center gap-1 py-2 text-red-800 dark:text-amber-400">
-          <i class="ri-home-5-fill text-2xl"></i>
-          <span class="text-xs font-bold">Home</span>
-        </button>
-        <button onclick="renderRekap()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
-          <i class="ri-bar-chart-box-line text-2xl"></i>
-          <span class="text-xs font-medium">Rekap</span>
-        </button>
-        <button onclick="renderAjukanIzin()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
-          <i class="ri-file-add-line text-2xl"></i>
-          <span class="text-xs font-medium">Izin</span>
-        </button>
-        <button onclick="renderNotifikasi()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400 relative">
-          <i class="ri-notification-3-line text-2xl"></i>
-          <span class="text-xs font-medium">Notif</span>
-          <span id="notifBadge" class="hidden absolute top-1 right-6 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-        <button onclick="renderProfil()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
-          <i class="ri-user-line text-2xl"></i>
-          <span class="text-xs font-medium">Profil</span>
-        </button>
-      </div>
-    </div>
+    ${renderBottomNav('home')}
   `;
   document.getElementById('app').innerHTML = html;
   updateWaktu();
@@ -429,7 +354,7 @@ function renderHome() {
 
 async function loadHomeData() {
   const res = await apiCall('get_dashboard', { nama: currentUser.Nama.trim() });
-  const rekapRes = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim() });
+  const rekapRes = await apiCall('get_rekap_user', { nama: currentUser.Nama.trim(), bulan: new Date().toISOString().slice(0, 7) });
 
   if (rekapRes.status === 'success' && rekapRes.statistik) {
     const { hadir = 0, izin = 0, alpa = 0 } = rekapRes.statistik;
@@ -453,21 +378,20 @@ async function loadHomeData() {
     if (statusEl) {
       if (res.sudahAbsenMasuk && res.sudahAbsenPulang) {
         statusEl.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Lengkap';
-        statusEl.className = 'px-3 py-1 rounded-full bg-green-500 text-xs font-bold';
+        statusEl.className = 'px-3 py-1 rounded-full bg-green-500 text-white text-xs font-bold';
       } else if (res.sudahAbsenMasuk) {
         statusEl.innerHTML = '<i class="ri-time-fill"></i> Masuk';
-        statusEl.className = 'px-3 py-1 rounded-full bg-yellow-500 text-xs font-bold';
+        statusEl.className = 'px-3 py-1 rounded-full bg-yellow-500 text-white text-xs font-bold';
       } else {
         statusEl.innerHTML = '<i class="ri-close-circle-fill"></i> Belum';
-        statusEl.className = 'px-3 py-1 rounded-full glass text-xs font-bold';
+        statusEl.className = 'px-3 py-1 rounded-full glass text-white text-xs font-bold';
       }
     }
 
-    // FIX: Format jam biar ga 1899
     const formatJam = (jam) => {
       if (!jam || jam === '') return '-';
       if (typeof jam === 'string' && jam.includes('T')) {
-        return jam.split('T')[1].substring(0, 8); // Ambil HH:mm:ss aja
+        return jam.split('T')[1].substring(0, 8);
       }
       return jam;
     };
@@ -477,7 +401,7 @@ async function loadHomeData() {
 
     const aktivitas = document.getElementById('aktivitasTerakhir');
     if (res.aktivitasTerakhir && res.aktivitasTerakhir.length > 0) {
-      aktivitas.innerHTML = res.aktivitasTerakhir.map((a, i) => `
+      aktivitas.innerHTML = res.aktivitasTerakhir.map((a) => `
         <div class="flex items-center gap-3 p-2 glass rounded-lg">
           <i class="${a.icon} text-xl" style="color: var(--accent-primary)"></i>
           <div class="flex-1">
@@ -495,7 +419,6 @@ async function loadHomeData() {
 function animateNumber(id, end, suffix = '') {
   const el = document.getElementById(id);
   if (!el) return;
-  let start = 0;
   const duration = 1000;
   const step = (timestamp, startTime) => {
     if (!startTime) startTime = timestamp;
@@ -507,79 +430,7 @@ function animateNumber(id, end, suffix = '') {
   requestAnimationFrame(step);
 }
 
-function initPullToRefresh() {
-  let startY = 0;
-  let isPulling = false;
-  const threshold = 80;
-  const el = document.getElementById('pullToRefresh');
-
-  el.addEventListener('touchstart', e => {
-    if (window.scrollY === 0) {
-      startY = e.touches[0].clientY;
-      isPulling = true;
-    }
-  });
-
-  el.addEventListener('touchmove', e => {
-    if (!isPulling) return;
-    const dy = e.touches[0].clientY - startY;
-    if (dy > 0 && dy < threshold * 1.5) {
-      el.style.transform = `translateY(${dy/3}px)`;
-      el.style.opacity = 1 - dy / (threshold * 3);
-    }
-  });
-
-  el.addEventListener('touchend', () => {
-    if (!isPulling) return;
-    isPulling = false;
-    el.style.transition = 'all 0.3s ease';
-    el.style.transform = '';
-    el.style.opacity = '';
-    setTimeout(() => el.style.transition = '', 300);
-    const currentTransform = el.style.transform;
-    const dy = parseFloat(currentTransform.replace('translateY(','').replace('px)','')) || 0;
-    if (dy > threshold / 3) {
-      showToast('Memuat ulang...', 'success');
-      loadHomeData();
-    }
-  });
-}
-
-function loadQuoteMotivasi() {
-  const quotes = [
-    "Kerja keras mengalahkan bakat ketika bakat tidak bekerja keras.",
-    "Disiplin adalah jembatan antara tujuan dan pencapaian.",
-    "Sukses adalah jumlah dari usaha kecil yang diulang setiap hari.",
-    "Jadilah produktif, bukan hanya sibuk.",
-    "Integritas adalah melakukan hal benar meski tidak ada yang melihat."
-  ];
-  const quote = quotes[Math.floor(Math.random() * quotes.length)];
-  const el = document.getElementById('quoteMotivasi');
-  if (el) el.innerText = `"${quote}"`;
-}
-
-function showQuickMenu() {
-  document.getElementById('quickMenuSheet').classList.remove('hidden');
-}
-function closeQuickMenu() {
-  document.getElementById('quickMenuSheet').classList.add('hidden');
-}
-function showNotifikasi() {
-  showToast('Belum ada notifikasi baru', 'warning');
-}
-function renderIzin() {
-  showToast('Fitur Izin segera hadir', 'warning');
-}
-function showSlipGaji() {
-  showToast('Slip gaji bulan ini belum tersedia', 'warning');
-}
-
 // === ABSEN ===
-async function quickAbsen(tipe) {
-  showToast('Buka kamera dulu untuk absen', 'warning');
-  renderAbsen(tipe);
-}
-
 async function renderAbsen(tipeDefault = 'IN') {
   stopAllStreams();
   absenTipe = tipeDefault;
@@ -731,7 +582,7 @@ async function submitAbsen() {
     longitude: lon,
     lokasi: lat? `${lat}, ${lon}` : '',
     unit_kerja: currentUser.Unit_Kerja,
-    tanggal: new Date().toLocaleDateString('sv-SE') // FIX: kirim tanggal format YYYY-MM-DD
+    tanggal: new Date().toLocaleDateString('sv-SE')
   });
 
   if (res.status === 'success') {
@@ -743,6 +594,7 @@ async function submitAbsen() {
     showToast(res.msg, 'error');
   }
 }
+
 // === REKAP ===
 async function renderRekap() {
   stopAllStreams();
@@ -868,7 +720,7 @@ async function loadRekapBulan() {
 
     const today = new Date();
     const isToday = day === today.getDate() && month === today.getMonth()+1 && year === today.getFullYear();
-    const ring = isToday? 'ring-2 ring-[#800000] ring-offset-2 dark:ring-offset-gray-800' : '';
+    const ring = isToday? 'ring-2 ring-[#800000] dark:ring-[var(--accent-primary)] ring-offset-2 dark:ring-offset-gray-800' : '';
 
     html += `
       <button onclick="showDetailTanggal(${day}, '${status}', ${idx})"
@@ -949,9 +801,8 @@ function showDetailTanggal(day, status, idx) {
       </div>
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Durasi</p>
-        <p class="font-bold text-sm text-[#800000]">${durasi}</p>
+        <p class="font-bold text-sm text-[#800000] dark:text-[var(--accent-primary)]">${durasi}</p>
       </div>
-    </div>
     ${lokasi!== '-'? `
     <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
       <div class="flex items-start gap-2">
@@ -985,7 +836,7 @@ async function renderAccount() {
   </div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-4 text-center">
-      <img src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover border-4 border-[#800000] shadow-lg">
+      <img src="${foto}" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover border-4 border-[#800000] dark:border-[var(--accent-primary)] shadow-lg">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white">${currentUser.Nama}</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400">${currentUser.Jabatan || 'Karyawan'}</p>
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${currentUser.Unit_Kerja || 'Keamanan'}</p>
@@ -1014,290 +865,6 @@ async function renderAccount() {
   </div>
   ${renderBottomNav('account')}`;
   applyDarkMode();
-}
-
-// === PATROLI ===
-async function renderPatroli() {
-  stopAllStreams();
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Patroli</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Pilih Pos</label>
-      <select id="posPatroli" class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold focus:border-[#800000] focus:outline-none mb-3">
-        <option>Loading...</option>
-      </select>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Patroli</label>
-      <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden mb-3">
-        <video id="cameraPatroli" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-        <img id="previewPatroli" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraPatroli()" id="btnBukaKameraPatroli" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-          <i class="ri-camera-line text-4xl"></i>
-          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
-        </button>
-        <button onclick="ambilFotoPatroli()" id="btnCapturePatroli" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
-          <i class="ri-camera-fill"></i> Ambil Foto
-        </button>
-      </div>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Keterangan</label>
-      <textarea id="ketPatroli" rows="3" placeholder="Kondisi pos, temuan, dll" class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-[#800000] focus:outline-none mb-3"></textarea>
-      <button onclick="submitPatroli()" id="btnSubmitPatroli" class="w-full bg-gradient-to-r from-[#800000] to-[#a00000] text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50" disabled>
-        <i class="ri-check-line"></i> Submit Patroli
-      </button>
-    </div>
-  ${renderBottomNav('home')}`;
-  applyDarkMode();
-  loadPosPatroli();
-}
-
-async function loadPosPatroli() {
-  const res = await apiCall('get_pos_patroli');
-  const select = document.getElementById('posPatroli');
-  if (res.status === 'success') {
-    select.innerHTML = res.data.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
-  } else {
-    select.innerHTML = '<option>Gagal load pos</option>';
-  }
-}
-
-async function startCameraPatroli() {
-  try {
-    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.getElementById('cameraPatroli');
-    video.srcObject = absenStream;
-    video.classList.remove('hidden');
-    document.getElementById('btnBukaKameraPatroli').classList.add('hidden');
-    document.getElementById('btnCapturePatroli').classList.remove('hidden');
-  } catch (err) {
-    showToast('Kamera error: ' + err.message, 'error');
-  }
-}
-
-function ambilFotoPatroli() {
-  const video = document.getElementById('cameraPatroli');
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const maxSize = 800;
-  let width = video.videoWidth;
-  let height = video.videoHeight;
-  if (width > height) {
-    if (width > maxSize) {
-      height = height * (maxSize / width);
-      width = maxSize;
-    }
-  } else {
-    if (height > maxSize) {
-      width = width * (maxSize / height);
-      height = maxSize;
-    }
-  }
-  canvas.width = width;
-  canvas.height = height;
-  ctx.drawImage(video, 0, 0, width, height);
-  patroliFoto = canvas.toDataURL('image/jpeg', 0.6);
-  const preview = document.getElementById('previewPatroli');
-  preview.src = patroliFoto;
-  preview.classList.remove('hidden');
-  video.classList.add('hidden');
-  document.getElementById('btnCapturePatroli').classList.add('hidden');
-  document.getElementById('btnSubmitPatroli').disabled = false;
-  if (absenStream) {
-    absenStream.getTracks().forEach(track => track.stop());
-    absenStream = null;
-  }
-  showToast('Foto siap!', 'success');
-}
-
-async function submitPatroli() {
-  if (!patroliFoto) {
-    showToast('Ambil foto dulu!', 'error');
-    return;
-  }
-  const pos = document.getElementById('posPatroli').value;
-  const ket = document.getElementById('ketPatroli').value;
-  const btn = document.getElementById('btnSubmitPatroli');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
-
-  let lat = null, lon = null;
-  try {
-    const posGPS = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-    });
-    lat = posGPS.coords.latitude;
-    lon = posGPS.coords.longitude;
-  } catch (e) {}
-
-  const res = await apiCall('submit_patroli', {
-    nama: currentUser.Nama.trim(),
-    pos: pos,
-    foto: patroliFoto,
-    latitude: lat,
-    longitude: lon,
-    keterangan: ket,
-    unit_kerja: currentUser.Unit_Kerja
-  });
-
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 800);
-  } else {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ri-check-line"></i> Submit Patroli';
-    showToast(res.msg, 'error');
-  }
-}
-
-// === DARURAT ===
-async function renderDarurat() {
-  stopAllStreams();
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 sticky top-0 z-50">
-    <button onclick="renderHome()"><i class="ri-arrow-left-s-line text-2xl text-gray-900 dark:text-white"></i></button>
-    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Lapor Kejadian Darurat</h1>
-  </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <div class="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-lg mb-4">
-      <p class="text-sm text-red-700 dark:text-red-300"><i class="ri-alarm-warning-line"></i> <b>Penting:</b> Gunakan hanya untuk kejadian darurat nyata.</p>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Jenis Kejadian</label>
-      <select id="jenisKejadian" class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-bold focus:border-[#800000] focus:outline-none mb-3">
-        <option>Kebakaran</option>
-        <option>Pencurian</option>
-        <option>Kerusakan</option>
-        <option>Medis</option>
-        <option>Lainnya</option>
-      </select>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Tingkat Urgensi</label>
-      <div class="flex gap-2 mb-3">
-        <button onclick="setUrgensi('Rendah')" class="flex-1 py-2 rounded-lg font-bold bg-green-500 text-white" id="urgensiRendah">Rendah</button>
-        <button onclick="setUrgensi('Sedang')" class="flex-1 py-2 rounded-lg font-bold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300" id="urgensiSedang">Sedang</button>
-        <button onclick="setUrgensi('Tinggi')" class="flex-1 py-2 rounded-lg font-bold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300" id="urgensiTinggi">Tinggi</button>
-      </div>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Deskripsi</label>
-      <textarea id="deskripsiKejadian" rows="3" placeholder="Jelaskan kejadian secara singkat" class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-[#800000] focus:outline-none mb-3"></textarea>
-      <label class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Foto Bukti</label>
-      <div class="relative w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden mb-3">
-        <video id="cameraKejadian" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-        <img id="previewKejadian" class="w-full h-full object-cover hidden" />
-        <button onclick="startCameraKejadian()" id="btnBukaKameraKejadian" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-          <i class="ri-camera-line text-4xl"></i>
-          <p class="text-sm font-semibold">Tap untuk buka kamera</p>
-        </button>
-        <button onclick="ambilFotoKejadian()" id="btnCaptureKejadian" class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 px-6 py-2 rounded-full font-bold text-gray-800 shadow-lg hidden">
-          <i class="ri-camera-fill"></i> Ambil Foto
-        </button>
-      </div>
-      <button onclick="submitKejadian()" id="btnSubmitKejadian" class="w-full bg-gradient-to-r from-red-600 to-red-700 text-white p-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition disabled:opacity-50" disabled>
-        <i class="ri-alarm-warning-line"></i> Kirim Laporan Darurat
-      </button>
-    </div>
-  ${renderBottomNav('home')}`;
-  applyDarkMode();
-}
-
-function setUrgensi(level) {
-  urgensiKejadian = level;
-  document.getElementById('urgensiRendah').className = level === 'Rendah'? 'flex-1 py-2 rounded-lg font-bold bg-green-500 text-white' : 'flex-1 py-2 rounded-lg font-bold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-  document.getElementById('urgensiSedang').className = level === 'Sedang'? 'flex-1 py-2 rounded-lg font-bold bg-yellow-500 text-white' : 'flex-1 py-2 rounded-lg font-bold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-  document.getElementById('urgensiTinggi').className = level === 'Tinggi'? 'flex-1 py-2 rounded-lg font-bold bg-red-500 text-white' : 'flex-1 py-2 rounded-lg font-bold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-}
-
-async function startCameraKejadian() {
-  try {
-    absenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.getElementById('cameraKejadian');
-    video.srcObject = absenStream;
-    video.classList.remove('hidden');
-    document.getElementById('btnBukaKameraKejadian').classList.add('hidden');
-    document.getElementById('btnCaptureKejadian').classList.remove('hidden');
-  } catch (err) {
-    showToast('Kamera error: '+ err.message, 'error');
-  }
-}
-
-function ambilFotoKejadian() {
-  const video = document.getElementById('cameraKejadian');
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const maxSize = 800;
-  let width = video.videoWidth;
-  let height = video.videoHeight;
-  if (width > height) {
-    if (width > maxSize) {
-      height = height * (maxSize / width);
-      width = maxSize;
-    }
-  } else {
-    if (height > maxSize) {
-      width = width * (maxSize / height);
-      height = maxSize;
-    }
-  }
-  canvas.width = width;
-  canvas.height = height;
-  ctx.drawImage(video, 0, 0, width, height);
-  kejadianFoto = canvas.toDataURL('image/jpeg', 0.6);
-  const preview = document.getElementById('previewKejadian');
-  preview.src = kejadianFoto;
-  preview.classList.remove('hidden');
-  video.classList.add('hidden');
-  document.getElementById('btnCaptureKejadian').classList.add('hidden');
-  document.getElementById('btnSubmitKejadian').disabled = false;
-  if (absenStream) {
-    absenStream.getTracks().forEach(track => track.stop());
-    absenStream = null;
-  }
-  showToast('Foto siap!', 'success');
-}
-
-async function submitKejadian() {
-  if (!kejadianFoto) {
-    showToast('Ambil foto dulu!', 'error');
-    return;
-  }
-  const jenis = document.getElementById('jenisKejadian').value;
-  const deskripsi = document.getElementById('deskripsiKejadian').value;
-  if (!deskripsi) {
-    showToast('Deskripsi wajib diisi!', 'error');
-    return;
-  }
-  const btn = document.getElementById('btnSubmitKejadian');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Mengirim...';
-
-  let lat = null, lon = null;
-  try {
-    const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-    });
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  } catch (e) {}
-
-  const res = await apiCall('lapor_kejadian', {
-    nama: currentUser.Nama.trim(),
-    jenis: jenis,
-    deskripsi: deskripsi,
-    urgensi: urgensiKejadian,
-    foto: kejadianFoto,
-    latitude: lat,
-    longitude: lon,
-    unit_kerja: currentUser.Unit_Kerja
-  });
-
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 800);
-  } else {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ri-alarm-warning-line"></i> Kirim Laporan Darurat';
-    showToast(res.msg, 'error');
-  }
 }
 
 // === INIT ===
