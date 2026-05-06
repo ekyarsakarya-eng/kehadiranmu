@@ -38,20 +38,19 @@
     box-sizing: border-box;
   }
 
- .font-header {
+  .font-header {
     font-family: var(--font-header);
   }
 
-  /* FIX: Biar center + ga bentrok warna */
+  /* FIX: Background + full width buat dashboard */
   html {
     background: #f3f4f6;
   }
- .dark html {
+  .dark html {
     background: #111827;
   }
   body {
-    max-width: 480px;
-    margin: 0 auto;
+    margin: 0;
     background: transparent;
     overflow-x: hidden;
     min-height: 100vh;
@@ -67,7 +66,7 @@
     80% { transform: translateY(4px); }
     100% { transform: translateY(0); opacity: 1; }
   }
- .animate-slide-up-bounce {
+  .animate-slide-up-bounce {
     animation: slideUpBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -75,29 +74,29 @@
     0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
     50% { box-shadow: 0 0 30px var(--accent-glow), 0 0 40px var(--accent-glow); }
   }
- .animate-glow {
+  .animate-glow {
     animation: glow 2s ease-in-out infinite;
   }
 
- .card-maroon {
+  .card-maroon {
     background: var(--accent-gradient);
   }
 
- .glass {
+  .glass {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
- .dark.glass {
+  .dark .glass {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
- .ripple {
+  .ripple {
     position: relative;
     overflow: hidden;
   }
- .ripple:active::after {
+  .ripple:active::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -121,7 +120,7 @@
     scrollbar-width: none;
   }
 
- .tabular-nums {
+  .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 
@@ -132,6 +131,14 @@
 
   img {
     image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* FIX: Batasin lebar konten dashboard di PC biar ga kelebaran */
+  @media (min-width: 1024px) {
+    .dashboard-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
   }
 </style>
 </head>
