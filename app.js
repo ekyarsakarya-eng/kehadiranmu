@@ -242,208 +242,189 @@ function swipeCard(idx) {
   document.getElementById('dot-1').className = idx === 1? 'w-2.5 h-2.5 rounded-full bg-[#800000] transition-all duration-300' : 'w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300';
 }
 
-async function renderHome() {
-  stopAllStreams();
-  const timeMode = getTimeMode();
-  document.documentElement.setAttribute('data-time', timeMode);
-
-  let fotoUser = currentUser.URL_Logo || 'https://placehold.co/100x100/FFFFFF/800000?text=U';
-  fotoUser = fotoUser.replace(/\s/g, '');
-  if (fotoUser.includes('uc?export=view&id=')) {
-    const fileId = fotoUser.split('id=')[1].split('&')[0];
-    fotoUser = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-  }
-
-  const greeting = getGreeting();
-  const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
-
-  // FIX: Set default 0 dulu biar ga undefined
-  let h = 0, i = 0, a = 0;
-
-  app.innerHTML = `
-  <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50 animate-slide-up-bounce">
-    <div class="flex items-center gap-2 min-w-0 flex-1">
-      <img src="${LOGO_APP}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" style="box-shadow: 0 0 20px var(--accent-glow)">
-      <div class="min-w-0 flex-1 overflow-hidden">
-        <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
-      </div>
-    <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
-      <button onclick="showNotifikasi()" class="relative active:scale-90 transition ripple">
-        <i class="ri-notification-3-line"></i>
-        <span id="notifBadge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text- rounded-full flex items-center justify-center font-bold hidden">0</span>
-      </button>
-      <button onclick="showQuickMenu()" class="active:scale-90 transition ripple"><i class="ri-menu-line"></i></button>
-    </div>
-  <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen" id="pullToRefresh">
-    <div class="mb-4 animate-slide-up-bounce" style="animation-delay: 0.1s">
-      <div class="flex items-center justify-between mb-1">
-        <div class="flex items-center gap-2">
-          <i class="${greeting.icon} text-2xl ${greeting.color} animate-bounce" style="animation-duration: 2s"></i>
-          <p class="text-lg font-bold text-gray-800 dark:text-white">${greeting.text}, ${currentUser.Nama.split(' ')[0]}!</p>
-        </div>
-        <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center active:scale-90 transition ripple">
-          <i class="${darkIcon} text-xl"></i>
-        </button>
-      </div>
-      <p id="liveClock" class="text-4xl font-extrabold text-gray-900 dark:text-white font-header tabular-nums" style="color: var(--accent-primary)"></p>
-      <p id="liveDate" class="text-sm text-gray-500 dark:text-gray-400"></p>
-    </div>
-
-    <div class="mb-4 animate-slide-up-bounce" style="animation-delay: 0.2s">
-      <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-5 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-32 h-32 opacity-10" style="background: var(--accent-gradient); filter: blur(40px)"></div>
-        <div class="flex items-center justify-between mb-3">
-          <p class="font-bold text-sm text-gray-800 dark:text-white">Produktivitas Bulan Ini</p>
-          <button onclick="renderRekap()" class="text-xs font-semibold" style="color: var(--accent-primary)">Detail →</button>
-        </div>
-        <div class="flex items-center gap-4">
-          <div class="relative w-24 h-24">
-            <svg class="w-24 h-24 transform -rotate-90">
-              <circle cx="48" cy="48" r="38" stroke="currentColor" stroke-width="7" fill="none" class="text-gray-200 dark:text-gray-700"/>
-              <circle id="progressRing" cx="48" cy="48" r="38" stroke="currentColor" stroke-width="7" fill="none"
-                      style="color: var(--accent-primary)" class="transition-all duration-1000"
-                      stroke-dasharray="239" stroke-dashoffset="239" stroke-linecap="round"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <p id="persenHadir" class="text-2xl font-extrabold text-gray-900 dark:text-white">0%</p>
-              <p class="text- text-gray-500">Hadir</p>
+function renderHome() {
+  const html = `
+    <div class="min-h-screen pb-24" style="background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);">
+      <div class="dark" style="background: linear-gradient(to bottom, #111827, #1f2937);">
+        <!-- HEADER: LOGO TENGAH ATAS -->
+        <div class="px-4 pt-6 pb-4">
+          <div class="flex flex-col items-center gap-3 mb-4">
+            <!-- Baris 1: Lonceng + Logo + Menu -->
+            <div class="w-full flex items-center justify-between">
+              <button class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
+                <i class="ri-notification-3-line text-gray-800 dark:text-white"></i>
+              </button>
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center shadow-lg animate-glow">
+                <img src="${LOGO_URL}" class="w-10 h-10 object-contain" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'ri-hospital-line text-white text-2xl\\'></i>'"/>
+              </div>
+              <button onclick="toggleSidebar()" class="ripple w-10 h-10 rounded-full glass flex items-center justify-center">
+                <i class="ri-menu-line text-gray-800 dark:text-white"></i>
+              </button>
             </div>
+            <!-- Baris 2: Sapaan -->
+            <div class="text-center">
+              <p class="text-xs text-gray-500 dark:text-gray-400">Selamat ${getGreeting()}!</p>
+              <h1 class="font-header text-xl font-black text-gray-900 dark:text-white">${currentUser.Nama}</h1>
+              <p class="text-xs text-gray-600 dark:text-gray-300">${currentUser.Unit_Kerja}</p>
             </div>
-          <div class="flex-1">
-            <div class="grid grid-cols-3 gap-2 text-center">
-              <div class="bg-[#f5e6d3] p-3 rounded-xl">
-                <p id="statHadirHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${h}</p>
-                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Hadir</p>
-              </div>
-              <div class="bg-[#f5e6d3] p-3 rounded-xl">
-                <p id="statIzinHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${i}</p>
-                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Izin</p>
-              </div>
-              <div class="bg-[#f5e6d3] p-3 rounded-xl">
-                <p id="statAlpaHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${a}</p>
-                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Alpha</p>
-              </div>
-            <p id="quoteMotivasi" class="text-xs text-gray-600 dark:text-gray-400 italic">Memuat motivasi...</p>
           </div>
         </div>
-      </div>
-    </div>
 
-    <div class="relative overflow-hidden mb-4 cursor-grab select-none animate-slide-up-bounce" style="animation-delay: 0.3s" id="swipeWrapper">
-      <div class="flex transition-transform duration-300 ease-out" id="swipeContainer">
-        <div class="w-full flex-shrink-0">
-          <div class="text-white rounded-3xl p-5 shadow-2xl card-maroon">
-            <div class="absolute top-0 right-0 w-40 h-40 opacity-20 shimmer"></div>
-            <div class="flex items-center gap-3 mb-4 relative z-10">
-              <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-0.5 shadow-lg flex-shrink-0 border-2 border-white/30 animate-glow">
-              <div class="min-w-0 flex-1">
-                <p class="font-bold text-base uppercase">${currentUser.Nama}</p>
-                <p class="text-xs opacity-80">${currentUser.Jabatan || 'Karyawan'} | ${currentUser.Unit_Kerja || 'Keamanan'}</p>
+        <!-- CARD MAROON -->
+        <div class="px-4 -mt-2">
+          <div class="card-maroon rounded-3xl p-5 shadow-2xl animate-slide-up-bounce">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-white/80 text-xs font-medium">Status Hari Ini</p>
+                <p class="text-white font-header font-bold text-lg" id="tanggalHariIni">${formatTanggal(new Date())}</p>
               </div>
-              <div id="statusAbsenHariIni" class="px-3 py-1 rounded-full glass text-xs font-bold">
+              <div id="statusAbsenHariIni" class="px-3 py-1 rounded-full glass text-white text-xs font-bold">
                 <i class="ri-loader-4-line animate-spin"></i>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-3 mb-3 relative z-10">
-              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4] dark:bg-white/10 dark:text-[#f5e6d3] dark:border-white/20 dark:hover:bg-white/20">
-  <i class="ri-login-circle-line text-3xl mb-1"></i>
-  <p class="font-bold text-xs">Absen Masuk</p>
-  <p id="jamMasukToday" class="text- opacity-70 mt-1">-</p>
-</button>
-<button onclick="quickAbsen('OUT')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4] dark:bg-white/10 dark:text-[#f5e6d3] dark:border-white/20 dark:hover:bg-white/20">
-  <i class="ri-logout-circle-r-line text-3xl mb-1"></i>
-  <p class="font-bold text-xs">Absen Pulang</p>
-  <p id="jamPulangToday" class="text- opacity-70 mt-1">-</p>
-</button>
+
+            <!-- JAM REALTIME -->
+            <div class="text-center my-6">
+              <div class="inline-block">
+                <div class="text-white font-header font-black text-5xl tabular-nums tracking-tight" id="jamDigital">00:00:00</div>
+                <div class="text-white/60 text-xs mt-1 font-medium">WIB - Asia/Jakarta</div>
+              </div>
             </div>
-            <button onclick="renderAbsen()" class="w-full bg-white text-gray-900 py-3 rounded-2xl font-bold active:scale-95 transition shadow-lg hover:shadow-xl ripple relative z-10">
-              <i class="ri-camera-fill"></i> Buka Kamera Absen
-            </button>
+
+            <!-- JAM MASUK & PULANG -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="glass rounded-2xl p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <i class="ri-login-box-line text-green-400"></i>
+                  </div>
+                  <span class="text-white/80 text-xs font-medium">Masuk</span>
+                </div>
+                <p class="text-white font-bold text-lg tabular-nums" id="jamMasukToday">-</p>
+              </div>
+              <div class="glass rounded-2xl p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                    <i class="ri-logout-box-line text-red-400"></i>
+                  </div>
+                  <span class="text-white/80 text-xs font-medium">Pulang</span>
+                </div>
+                <p class="text-white font-bold text-lg tabular-nums" id="jamPulangToday">-</p>
+              </div>
+            </div>
+
+            <!-- TOMBOL ABSEN -->
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="bukaKameraAbsen('IN')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
+                <i class="ri-login-box-line text-2xl block mb-1"></i>
+                <p class="text-sm">Masuk</p>
+              </button>
+              <button onclick="bukaKameraAbsen('OUT')" class="ripple bg-[#f5e6d3] text-red-900 rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition-all">
+                <i class="ri-logout-box-line text-2xl block mb-1"></i>
+                <p class="text-sm">Pulang</p>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="w-full flex-shrink-0">
-          <div onclick="renderRekap()" class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-5 h-full active:scale-98 transition cursor-pointer ripple relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-32 h-32 opacity-5" style="background: var(--accent-gradient); filter: blur(30px)"></div>
-            <div class="flex items-center justify-between mb-3 relative z-10">
-              <p class="font-bold text-sm text-gray-800 dark:text-white">Aktivitas Terakhir</p>
-              <i class="ri-arrow-right-s-line text-xl text-gray-400"></i>
+        <!-- STATISTIK BULAN INI -->
+        <div class="px-4 mt-6">
+          <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-header font-bold text-gray-900 dark:text-white">Statistik Bulan Ini</h3>
+              <button onclick="renderRekap()" class="text-xs font-semibold text-red-800 dark:text-amber-400">
+                Lihat Detail <i class="ri-arrow-right-line"></i>
+              </button>
             </div>
-            <div id="aktivitasTerakhir" class="space-y-2 relative z-10">
-              <div class="h-12 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-              <div class="h-12 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+            
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl">
+                <div class="w-10 h-10 rounded-xl bg-green-500 mx-auto mb-2 flex items-center justify-center">
+                  <i class="ri-checkbox-circle-fill text-white text-xl"></i>
+                </div>
+                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statHadirHome">0</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Hadir</p>
+              </div>
+              <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl">
+                <div class="w-10 h-10 rounded-xl bg-yellow-500 mx-auto mb-2 flex items-center justify-center">
+                  <i class="ri-file-list-3-fill text-white text-xl"></i>
+                </div>
+                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statIzinHome">0</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Izin</p>
+              </div>
+              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl">
+                <div class="w-10 h-10 rounded-xl bg-red-500 mx-auto mb-2 flex items-center justify-center">
+                  <i class="ri-close-circle-fill text-white text-xl"></i>
+                </div>
+                <p class="text-2xl font-black text-gray-900 dark:text-white tabular-nums" id="statAlpaHome">0</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Alpa</p>
+              </div>
+            </div>
+
+            <!-- PROGRESS RING -->
+            <div class="relative">
+              <svg class="w-full" viewBox="0 0 100 50">
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#800000;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#a00000;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <path d="M 10 40 A 40 0 0 1 90 40" fill="none" stroke="#e5e7eb" stroke-width="8" class="dark:stroke-gray-700"/>
+                <path id="progressRing" d="M 10 40 A 40 40 0 0 1 90 40" fill="none" stroke="url(#progressGradient)" stroke-width="8" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="239" style="transition: stroke-dashoffset 1s ease-out"/>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pt-4">
+                <p class="text-3xl font-black text-gray-900 dark:text-white tabular-nums" id="persenHadir">0%</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Kehadiran</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AKTIVITAS TERAKHIR -->
+        <div class="px-4 mt-6">
+          <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
+            <h3 class="font-header font-bold text-gray-900 dark:text-white mb-4">Aktivitas Terakhir</h3>
+            <div id="aktivitasTerakhir" class="space-y-3">
+              <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="flex justify-center gap-2 mt-3">
-        <button onclick="swipeCard(0)" class="w-2.5 h-2.5 rounded-full transition-all duration-300" style="background: var(--accent-primary)" id="dot-0"></button>
-        <button onclick="swipeCard(1)" class="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600 transition-all duration-300" id="dot-1"></button>
-      </div>
     </div>
 
-    <div class="mt-6 animate-slide-up-bounce" style="animation-delay: 0.4s">
-      <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Menu Cepat</p>
-      <div class="grid grid-cols-4 gap-3">
-        <button onclick="renderPatroli()" class="ripple flex flex-col items-center gap-2 active:scale-90 transition group">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center shadow-lg group-active:scale-110 transition" style="box-shadow: 0 4px 14px rgba(34,197,94,0.4)">
-            <i class="ri-shield-user-line text-3xl text-white"></i>
-          </div>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Patroli</p>
+    <!-- BOTTOM NAV -->
+    <div class="fixed bottom-0 left-0 right-0 max-w- mx-auto bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-2xl">
+      <div class="grid grid-cols-5 gap-1 px-2 py-3">
+        <button class="ripple flex flex-col items-center gap-1 py-2 text-red-800 dark:text-amber-400">
+          <i class="ri-home-5-fill text-2xl"></i>
+          <span class="text-xs font-bold">Home</span>
         </button>
-        <button onclick="renderIzin()" class="ripple flex flex-col items-center gap-2 active:scale-90 transition group">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-active:scale-110 transition" style="box-shadow: 0 4px 14px rgba(249,115,22,0.4)">
-            <i class="ri-mail-send-line text-3xl text-white"></i>
-          </div>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Izin</p>
+        <button onclick="renderRekap()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
+          <i class="ri-bar-chart-box-line text-2xl"></i>
+          <span class="text-xs font-medium">Rekap</span>
         </button>
-        <button onclick="renderDarurat()" class="ripple flex flex-col items-center gap-2 active:scale-90 transition group">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg group-active:scale-110 transition" style="box-shadow: 0 4px 14px rgba(234,179,8,0.4)">
-            <i class="ri-alarm-warning-line text-3xl text-white"></i>
-          </div>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Darurat</p>
+        <button onclick="renderAjukanIzin()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
+          <i class="ri-file-add-line text-2xl"></i>
+          <span class="text-xs font-medium">Izin</span>
         </button>
-        <button onclick="showSlipGaji()" class="ripple flex flex-col items-center gap-2 active:scale-90 transition group">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-active:scale-110 transition" style="box-shadow: 0 4px 14px rgba(59,130,246,0.4)">
-            <i class="ri-file-text-line text-3xl text-white"></i>
-          </div>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Slip Gaji</p>
+        <button onclick="renderNotifikasi()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400 relative">
+          <i class="ri-notification-3-line text-2xl"></i>
+          <span class="text-xs font-medium">Notif</span>
+          <span id="notifBadge" class="hidden absolute top-1 right-6 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button onclick="renderProfil()" class="ripple flex flex-col items-center gap-1 py-2 text-gray-400">
+          <i class="ri-user-line text-2xl"></i>
+          <span class="text-xs font-medium">Profil</span>
         </button>
       </div>
     </div>
-  </div>
-
-  <div id="quickMenuSheet" class="fixed inset-0 bg-black/50 z-[100] hidden" onclick="closeQuickMenu()">
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl p-6 animate-slide-up-bounce" onclick="event.stopPropagation()">
-      <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-      <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Menu Cepat</h3>
-      <div class="grid grid-cols-3 gap-4">
-        <button onclick="logout(); closeQuickMenu()" class="flex flex-col items-center gap-2 p-4 bg-red-50 dark:bg-red-900/30 rounded-xl active:scale-95 transition">
-          <i class="ri-logout-box-r-line text-3xl text-red-600"></i>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Logout</p>
-        </button>
-        <button onclick="toggleDarkMode(); closeQuickMenu()" class="flex flex-col items-center gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl active:scale-95 transition">
-          <i class="${darkIcon} text-3xl"></i>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Mode</p>
-        </button>
-        <button onclick="showSlipGaji(); closeQuickMenu()" class="flex flex-col items-center gap-2 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl active:scale-95 transition">
-          <i class="ri-file-text-line text-3xl text-blue-600"></i>
-          <p class="text-xs font-bold text-gray-700 dark:text-gray-300">Slip</p>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  ${renderBottomNav('home')}
   `;
-
-  applyDarkMode();
-  startLiveClock();
-  initSwipeGesture();
-  loadHomeData(); // Ini yang bakal update angka h, i, a jadi real
-  initPullToRefresh();
-  loadQuoteMotivasi();
+  document.getElementById('app').innerHTML = html;
+  updateWaktu();
+  loadHomeData();
 }
 
 async function loadHomeData() {
