@@ -345,16 +345,16 @@ async function renderHome() {
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3 mb-3 relative z-10">
-              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border-[#800000]/20 hover:bg-[#e8d5c4]">
-                <i class="ri-login-circle-line text-3xl mb-1"></i>
-                <p class="font-bold text-xs">Absen Masuk</p>
-                <p id="jamMasukToday" class="text- opacity-70 mt-1">-</p>
-              </button>
-              <button onclick="quickAbsen('OUT')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4]">
-                <i class="ri-logout-circle-r-line text-3xl mb-1"></i>
-                <p class="font-bold text-xs">Absen Pulang</p>
-                <p id="jamPulangToday" class="text- opacity-70 mt-1">-</p>
-              </button>
+              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4] dark:bg-white/10 dark:text-[#f5e6d3] dark:border-white/20 dark:hover:bg-white/20">
+  <i class="ri-login-circle-line text-3xl mb-1"></i>
+  <p class="font-bold text-xs">Absen Masuk</p>
+  <p id="jamMasukToday" class="text- opacity-70 mt-1">-</p>
+</button>
+<button onclick="quickAbsen('OUT')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4] dark:bg-white/10 dark:text-[#f5e6d3] dark:border-white/20 dark:hover:bg-white/20">
+  <i class="ri-logout-circle-r-line text-3xl mb-1"></i>
+  <p class="font-bold text-xs">Absen Pulang</p>
+  <p id="jamPulangToday" class="text- opacity-70 mt-1">-</p>
+</button>
             </div>
             <button onclick="renderAbsen()" class="w-full bg-white text-gray-900 py-3 rounded-2xl font-bold active:scale-95 transition shadow-lg hover:shadow-xl ripple relative z-10">
               <i class="ri-camera-fill"></i> Buka Kamera Absen
@@ -732,9 +732,7 @@ async function submitAbsen() {
     });
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
-  } catch (e) {
-    console.log('GPS timeout, lanjut tanpa lokasi');
-  }
+  } catch (e) {}
 
   const res = await apiCall('absen', {
     nama: currentUser.Nama.trim(),
@@ -743,7 +741,8 @@ async function submitAbsen() {
     latitude: lat,
     longitude: lon,
     lokasi: lat? `${lat}, ${lon}` : '',
-    unit_kerja: currentUser.Unit_Kerja
+    unit_kerja: currentUser.Unit_Kerja,
+    tanggal: new Date().toLocaleDateString('sv-SE') // FIX: kirim tanggal format YYYY-MM-DD
   });
 
   if (res.status === 'success') {
@@ -755,7 +754,6 @@ async function submitAbsen() {
     showToast(res.msg, 'error');
   }
 }
-
 // === REKAP ===
 async function renderRekap() {
   stopAllStreams();
