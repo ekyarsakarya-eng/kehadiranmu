@@ -309,20 +309,20 @@ async function renderHome() {
             </div>
             </div>
           <div class="flex-1">
-            <div class="grid grid-cols-3 gap-2 text-center mb-2">
-              <div class="bg-[#f5e6d3] rounded-xl p-2">
-                <p id="statHadirHome" class="text-xl font-bold text-[#800000]">0</p>
-                <p class="text- text-[#600000]">Hadir</p>
-              </div>
-              <div class="bg-[#f5e6d3] rounded-xl p-2">
-                <p id="statIzinHome" class="text-xl font-bold text-[#800000]">0</p>
-                <p class="text- text-[#600000]">Izin</p>
-              </div>
-              <div class="bg-[#f5e6d3] rounded-xl p-2">
-                <p id="statAlpaHome" class="text-xl font-bold text-[#800000]">0</p>
-                <p class="text- text-[#600000]">Alpha</p>
-              </div>
-            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+  <div class="bg-[#f5e6d3] p-3 rounded-xl">
+    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${h}</p>
+    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Hadir</p>
+  </div>
+  <div class="bg-[#f5e6d3] p-3 rounded-xl">
+    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${i}</p>
+    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Izin</p>
+  </div>
+  <div class="bg-[#f5e6d3] p-3 rounded-xl">
+    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${a}</p>
+    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Alpha</p>
+  </div>
+</div>
             <p id="quoteMotivasi" class="text-xs text-gray-600 dark:text-gray-400 italic">Memuat motivasi...</p>
           </div>
         </div>
