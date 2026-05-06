@@ -462,34 +462,42 @@ async function loadHomeData() {
 
     const offset = 239 - (239 * persen / 100);
     setTimeout(() => {
-      document.getElementById('progressRing').style.strokeDashoffset = offset;
+      const ring = document.getElementById('progressRing');
+      if (ring) ring.style.strokeDashoffset = offset;
     }, 300);
   }
 
   if (res.status === 'success') {
     const statusEl = document.getElementById('statusAbsenHariIni');
-    const cardAbsen = document.querySelector('[style*="--accent-gradient"]');
-
-    if (res.sudahAbsenMasuk && res.sudahAbsenPulang) {
-      statusEl.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Lengkap';
-      statusEl.className = 'px-3 py-1 rounded-full bg-green-500 text-xs font-bold animate-glow';
-      if(cardAbsen) cardAbsen.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-    } else if (res.sudahAbsenMasuk) {
-      statusEl.innerHTML = '<i class="ri-time-fill"></i> Masuk';
-      statusEl.className = 'px-3 py-1 rounded-full bg-[#e8d5c4] text-[#600000] text-xs font-bold animate-glow';
-      if(cardAbsen) cardAbsen.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
-    } else {
-      statusEl.innerHTML = '<i class="ri-close-circle-fill"></i> Belum';
-      statusEl.className = 'px-3 py-1 rounded-full glass text-xs font-bold';
+    if (statusEl) {
+      if (res.sudahAbsenMasuk && res.sudahAbsenPulang) {
+        statusEl.innerHTML = '<i class="ri-checkbox-circle-fill"></i> Lengkap';
+        statusEl.className = 'px-3 py-1 rounded-full bg-green-500 text-xs font-bold';
+      } else if (res.sudahAbsenMasuk) {
+        statusEl.innerHTML = '<i class="ri-time-fill"></i> Masuk';
+        statusEl.className = 'px-3 py-1 rounded-full bg-yellow-500 text-xs font-bold';
+      } else {
+        statusEl.innerHTML = '<i class="ri-close-circle-fill"></i> Belum';
+        statusEl.className = 'px-3 py-1 rounded-full glass text-xs font-bold';
+      }
     }
 
-    document.getElementById('jamMasukToday').innerText = res.jamMasuk || '-';
-    document.getElementById('jamPulangToday').innerText = res.jamPulang || '-';
+    // FIX: Format jam biar ga 1899
+    const formatJam = (jam) => {
+      if (!jam || jam === '') return '-';
+      if (typeof jam === 'string' && jam.includes('T')) {
+        return jam.split('T')[1].substring(0, 8); // Ambil HH:mm:ss aja
+      }
+      return jam;
+    };
+
+    document.getElementById('jamMasukToday').innerText = formatJam(res.jamMasuk);
+    document.getElementById('jamPulangToday').innerText = formatJam(res.jamPulang);
 
     const aktivitas = document.getElementById('aktivitasTerakhir');
     if (res.aktivitasTerakhir && res.aktivitasTerakhir.length > 0) {
       aktivitas.innerHTML = res.aktivitasTerakhir.map((a, i) => `
-        <div class="flex items-center gap-3 p-2 glass rounded-lg animate-slide-up-bounce" style="animation-delay: ${i*0.1}s">
+        <div class="flex items-center gap-3 p-2 glass rounded-lg">
           <i class="${a.icon} text-xl" style="color: var(--accent-primary)"></i>
           <div class="flex-1">
             <p class="text-sm font-semibold text-gray-800 dark:text-white">${a.label}</p>
