@@ -257,6 +257,9 @@ async function renderHome() {
   const greeting = getGreeting();
   const darkIcon = isDarkMode? 'ri-moon-fill text-indigo-400' : 'ri-sun-fill text-yellow-500';
 
+  // FIX: Set default 0 dulu biar ga undefined
+  let h = 0, i = 0, a = 0;
+
   app.innerHTML = `
   <div class="bg-white dark:bg-gray-800 shadow-sm p-3 flex justify-between items-center sticky top-0 z-50 animate-slide-up-bounce">
     <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -264,7 +267,6 @@ async function renderHome() {
       <div class="min-w-0 flex-1 overflow-hidden">
         <p class="font-header font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style="font-size: clamp(11px, 3.5vw, 16px);">${APP_NAME}</p>
       </div>
-    </div>
     <div class="flex gap-3 text-xl text-gray-600 dark:text-gray-300 flex-shrink-0 pl-2">
       <button onclick="showNotifikasi()" class="relative active:scale-90 transition ripple">
         <i class="ri-notification-3-line"></i>
@@ -272,7 +274,6 @@ async function renderHome() {
       </button>
       <button onclick="showQuickMenu()" class="active:scale-90 transition ripple"><i class="ri-menu-line"></i></button>
     </div>
-  </div>
   <div class="p-4 pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen" id="pullToRefresh">
     <div class="mb-4 animate-slide-up-bounce" style="animation-delay: 0.1s">
       <div class="flex items-center justify-between mb-1">
@@ -310,19 +311,18 @@ async function renderHome() {
             </div>
           <div class="flex-1">
             <div class="grid grid-cols-3 gap-2 text-center">
-  <div class="bg-[#f5e6d3] p-3 rounded-xl">
-    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${h}</p>
-    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Hadir</p>
-  </div>
-  <div class="bg-[#f5e6d3] p-3 rounded-xl">
-    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${i}</p>
-    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Izin</p>
-  </div>
-  <div class="bg-[#f5e6d3] p-3 rounded-xl">
-    <p class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${a}</p>
-    <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Alpha</p>
-  </div>
-</div>
+              <div class="bg-[#f5e6d3] p-3 rounded-xl">
+                <p id="statHadirHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${h}</p>
+                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Hadir</p>
+              </div>
+              <div class="bg-[#f5e6d3] p-3 rounded-xl">
+                <p id="statIzinHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${i}</p>
+                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Izin</p>
+              </div>
+              <div class="bg-[#f5e6d3] p-3 rounded-xl">
+                <p id="statAlpaHome" class="text-2xl font-extrabold text-[#800000] dark:text-[#d4a574]">${a}</p>
+                <p class="text-xs font-semibold text-[#600000] dark:text-gray-300">Alpha</p>
+              </div>
             <p id="quoteMotivasi" class="text-xs text-gray-600 dark:text-gray-400 italic">Memuat motivasi...</p>
           </div>
         </div>
@@ -345,7 +345,7 @@ async function renderHome() {
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3 mb-3 relative z-10">
-              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border border-[#800000]/20 hover:bg-[#e8d5c4]">
+              <button onclick="quickAbsen('IN')" class="ripple bg-[#f5e6d3] text-[#800000] rounded-2xl p-4 active:scale-95 transition flex flex-col items-center border-[#800000]/20 hover:bg-[#e8d5c4]">
                 <i class="ri-login-circle-line text-3xl mb-1"></i>
                 <p class="font-bold text-xs">Absen Masuk</p>
                 <p id="jamMasukToday" class="text- opacity-70 mt-1">-</p>
@@ -441,7 +441,7 @@ async function renderHome() {
   applyDarkMode();
   startLiveClock();
   initSwipeGesture();
-  loadHomeData();
+  loadHomeData(); // Ini yang bakal update angka h, i, a jadi real
   initPullToRefresh();
   loadQuoteMotivasi();
 }
