@@ -65,7 +65,25 @@
   :not(.dark) .bg-blue-500, :not(.dark) .bg-blue-600, :not(.dark) .bg-blue-700 {
     background: var(--accent-gradient) !important;
   }
+  
+    /* Text maroon jadi emas di darkmode - FIX UTAMA */
+.text-\[\#800000\] { color: #800000 !important; }
+.dark .text-\[\#800000\] { color: #d4a574 !important; } /* Emas */
 
+.dark .text-gray-900 { color: #f5e6d3 !important; }
+.dark .text-gray-800 { color: #e5e7eb !important; }
+.dark .text-gray-700 { color: #d1d5db !important; }
+.dark .text-gray-600 { color: #9ca3af !important; }
+
+/* Card krem di darkmode biar teks keliatan */
+.dark .bg-\[\#f5e6d3\] { 
+  background-color: #2d1b1b !important; 
+  color: #f5e6d3 !important; 
+}
+.dark .bg-\[\#f5e6d3\] .text-\[\#800000\] {
+  color: #d4a574 !important; /* Angka 0 jadi emas */
+}
+    
   /* Krem untuk card statistik */
   .bg-\[\#f5e6d3\] { background-color: var(--cream) !important; }
   .dark .bg-\[\#f5e6d3\] { 
