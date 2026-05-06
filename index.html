@@ -20,14 +20,12 @@
     --font-body: 'Inter', sans-serif;
   }
 
-  /* Light Mode - Pagi/Siang */
   :root[data-time="pagi"], :root[data-time="siang"] {
     --accent-primary: #800000;
     --accent-gradient: linear-gradient(135deg, #800000, #a00000);
     --accent-glow: rgba(128, 0, 0, 0.3);
   }
 
-  /* Dark Mode - Sore/Malam */
   :root[data-time="sore"], :root[data-time="malam"] {
     --accent-primary: #d4a574;
     --accent-gradient: linear-gradient(135deg, #d4a574, #b8956a);
@@ -44,24 +42,19 @@
     font-family: var(--font-header);
   }
 
+  /* INI DOANG YANG DITAMBAH: Biar center + ga melebar */
   html {
     background: #f3f4f6;
   }
   .dark html {
     background: #111827;
   }
-
-  /* FIX LAYOUT: Center max 480px kayak HP */
   body {
     max-width: 480px;
     margin: 0 auto;
-    background: #f3f4f6;
+    background: inherit;
     overflow-x: hidden;
-    position: relative;
     min-height: 100vh;
-  }
-  .dark body {
-    background: #111827;
   }
   #app {
     min-height: 100vh;
@@ -69,7 +62,6 @@
     width: 100%;
   }
 
-  /* Animasi */
   @keyframes slideUpBounce {
     0% { transform: translateY(30px); opacity: 0; }
     60% { transform: translateY(-8px); }
@@ -98,55 +90,10 @@
     animation: glow 2s ease-in-out infinite;
   }
 
-  /* Card Maroon */
   .card-maroon {
-    background: linear-gradient(135deg, #800000, #600000) !important;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .dark .card-maroon {
-    background: linear-gradient(135deg, #4a0e0e, #2d0808) !important;
-    border: 1px solid rgba(255,255,255,0.05);
+    background: var(--accent-gradient);
   }
 
-  /* FIX TOMBOL ABSEN MASUK/PULANG */
-  .card-maroon .bg-\[\#f5e6d3\] {
-    background: #f5e6d3 !important;
-    color: #800000 !important;
-    border: 1px solid rgba(128,0,0,0.2) !important;
-  }
-  .card-maroon .bg-\[\#f5e6d3\]:hover {
-    background: #e8d5c4 !important;
-  }
-  .dark .card-maroon .bg-\[\#f5e6d3\] {
-    background: rgba(245,230,211,0.15) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(245,230,211,0.2) !important;
-    color: #f5e6d3 !important;
-  }
-  .dark .card-maroon .bg-\[\#f5e6d3\]:hover {
-    background: rgba(245,230,211,0.25) !important;
-  }
-  .dark .card-maroon .bg-\[\#f5e6d3\] i,
-  .dark .card-maroon .bg-\[\#f5e6d3\] p {
-    color: #f5e6d3 !important;
-  }
-
-  /* FIX TOMBOL BUKA KAMERA ABSEN */
-  .card-maroon .bg-white {
-    background: white !important;
-    color: #1f2937 !important;
-  }
-  .dark .card-maroon .bg-white {
-    background: rgba(255,255,255,0.1) !important;
-    color: #f5e6d3 !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .dark .card-maroon .bg-white:hover {
-    background: rgba(255,255,255,0.2) !important;
-  }
-
-  /* Glass effect */
   .glass {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
@@ -157,7 +104,6 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  /* Ripple effect */
   .ripple {
     position: relative;
     overflow: hidden;
@@ -178,7 +124,6 @@
     to { transform: translate(-50%, -50%) scale(2); opacity: 0; }
   }
 
-  /* Scrollbar hidden */
   ::-webkit-scrollbar {
     display: none;
   }
@@ -187,7 +132,6 @@
     scrollbar-width: none;
   }
 
-  /* Fix input number */
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -197,7 +141,6 @@
     -moz-appearance: textfield;
   }
 
-  /* Fix select arrow */
   select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23800000'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -209,18 +152,15 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23d4a574'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   }
 
-  /* Fix tabular numbers */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 
-  /* Fix video/camera */
   video {
     transform: scaleX(-1);
     -webkit-transform: scaleX(-1);
   }
 
-  /* Fix image object fit */
   img {
     image-rendering: -webkit-optimize-contrast;
   }
