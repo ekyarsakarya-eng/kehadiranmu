@@ -572,26 +572,64 @@ async function submitAbsen() {
     });
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
-  } catch (e) {}
+  } catch (e) {
+    console.warn('GPS error:', e);
+  }
 
-  const res = await apiCall('absen', {
-    nama: currentUser.Nama.trim(),
-    tipe: absenTipe,
-    foto: absenFoto,
-    latitude: lat,
-    longitude: lon,
-    lokasi: lat? `${lat}, ${lon}` : '',
-    unit_kerja: currentUser.Unit_Kerja,
-    tanggal: new Date().toLocaleDateString('sv-SE')
-  });
-
-  if (res.status === 'success') {
-    showToast(res.msg, 'success');
-    setTimeout(() => renderHome(), 800);
+  // FIX: Compress foto lebih kecil lagi biar ga timeout
+  const img = new Image();
+  img.src = absenFoto;
+  await new Promise(r => img.onload = r);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const maxSize = 600; // turunin dari 800 ke 600
+  let width = img.width;
+  let height = img.height;
+  if (width > height) {
+    if (width > maxSize) {
+      height = height * (maxSize / width);
+      width = maxSize;
+    }
   } else {
+    if (height > maxSize) {
+      width = width * (maxSize / height);
+      height = maxSize;
+    }
+  }
+  canvas.width = width;
+  canvas.height = height;
+  ctx.drawImage(img, 0, 0, width, height);
+  const fotoCompressed = canvas.toDataURL('image/jpeg', 0.5); // quality 0.5
+
+  console.log('Kirim absen:', { nama: currentUser.Nama, tipe: absenTipe, fotoSize: fotoCompressed.length });
+
+  try {
+    const res = await apiCall('absen', {
+      nama: currentUser.Nama.trim(),
+      tipe: absenTipe,
+      foto: fotoCompressed,
+      latitude: lat,
+      longitude: lon,
+      lokasi: lat? `${lat}, ${lon}` : '',
+      unit_kerja: currentUser.Unit_Kerja,
+      tanggal: new Date().toLocaleDateString('sv-SE')
+    });
+
+    console.log('Response:', res);
+
+    if (res.status === 'success') {
+      showToast(res.msg, 'success');
+      setTimeout(() => renderHome(), 800);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
+      showToast(res.msg || 'Gagal absen', 'error');
+    }
+  } catch (err) {
+    console.error('Fetch error:', err);
     btn.disabled = false;
     btn.innerHTML = '<i class="ri-check-line"></i> Submit Absen ' + (absenTipe === 'IN'? 'Masuk' : 'Pulang');
-    showToast(res.msg, 'error');
+    showToast('Gagal konek: ' + err.message, 'error');
   }
 }
 
