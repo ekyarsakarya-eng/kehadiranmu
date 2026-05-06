@@ -37,19 +37,28 @@
     * {
     font-family: var(--font-body);
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
   }
 
   .font-header {
     font-family: var(--font-header);
   }
 
-  /* FIX UTAMA: Center layout max 480px */
+  html {
+    background: #f3f4f6;
+  }
+  .dark html {
+    background: #111827;
+  }
+
+  /* FIX LAYOUT: Center max 480px kayak HP */
   body {
     max-width: 480px;
     margin: 0 auto;
     background: #f3f4f6;
     overflow-x: hidden;
     position: relative;
+    min-height: 100vh;
   }
   .dark body {
     background: #111827;
@@ -89,7 +98,7 @@
     animation: glow 2s ease-in-out infinite;
   }
 
-  /* Card Maroon - FIX DARKMODE */
+  /* Card Maroon */
   .card-maroon {
     background: linear-gradient(135deg, #800000, #600000) !important;
     border: 1px solid rgba(255,255,255,0.1);
@@ -99,10 +108,14 @@
     border: 1px solid rgba(255,255,255,0.05);
   }
 
-  /* FIX TOMBOL ABSEN MASUK/PULANG DI DARKMODE */
+  /* FIX TOMBOL ABSEN MASUK/PULANG */
   .card-maroon .bg-\[\#f5e6d3\] {
     background: #f5e6d3 !important;
     color: #800000 !important;
+    border: 1px solid rgba(128,0,0,0.2) !important;
+  }
+  .card-maroon .bg-\[\#f5e6d3\]:hover {
+    background: #e8d5c4 !important;
   }
   .dark .card-maroon .bg-\[\#f5e6d3\] {
     background: rgba(245,230,211,0.15) !important;
@@ -110,12 +123,15 @@
     border: 1px solid rgba(245,230,211,0.2) !important;
     color: #f5e6d3 !important;
   }
+  .dark .card-maroon .bg-\[\#f5e6d3\]:hover {
+    background: rgba(245,230,211,0.25) !important;
+  }
   .dark .card-maroon .bg-\[\#f5e6d3\] i,
   .dark .card-maroon .bg-\[\#f5e6d3\] p {
     color: #f5e6d3 !important;
   }
 
-  /* FIX TOMBOL BUKA KAMERA ABSEN DI DARKMODE */
+  /* FIX TOMBOL BUKA KAMERA ABSEN */
   .card-maroon .bg-white {
     background: white !important;
     color: #1f2937 !important;
@@ -125,6 +141,9 @@
     color: #f5e6d3 !important;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.1);
+  }
+  .dark .card-maroon .bg-white:hover {
+    background: rgba(255,255,255,0.2) !important;
   }
 
   /* Glass effect */
@@ -174,6 +193,9 @@
     -webkit-appearance: none;
     margin: 0;
   }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
 
   /* Fix select arrow */
   select {
@@ -185,6 +207,22 @@
   }
   .dark select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23d4a574'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  }
+
+  /* Fix tabular numbers */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Fix video/camera */
+  video {
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+  }
+
+  /* Fix image object fit */
+  img {
+    image-rendering: -webkit-optimize-contrast;
   }
 </style>
 </head>
