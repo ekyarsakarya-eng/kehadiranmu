@@ -332,7 +332,7 @@ async function renderHome() {
     <div class="relative overflow-hidden mb-4 cursor-grab select-none animate-slide-up-bounce" style="animation-delay: 0.3s" id="swipeWrapper">
       <div class="flex transition-transform duration-300 ease-out" id="swipeContainer">
         <div class="w-full flex-shrink-0">
-          <div class="text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden" style="background: var(--accent-gradient)">
+          <div class="text-white rounded-3xl p-5 shadow-2xl card-maroon">
             <div class="absolute top-0 right-0 w-40 h-40 opacity-20 shimmer"></div>
             <div class="flex items-center gap-3 mb-4 relative z-10">
               <img src="${fotoUser}" class="w-14 h-14 rounded-full object-cover bg-white p-0.5 shadow-lg flex-shrink-0 border-2 border-white/30 animate-glow">
