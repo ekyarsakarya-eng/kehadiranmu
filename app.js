@@ -207,7 +207,7 @@ function logout() {
 function renderHome() {
   const greeting = getGreeting();
   const html = `
-    <div class="min-h-screen pb-24 bg-gray-100 dark:bg-gray-900">
+    <div class="min-h-screen pb-24 bg-gray-100 dark:bg-gray-900 dashboard-container">
       <div class="px-4 pt-6 pb-4">
         <div class="flex flex-col items-center gap-3 mb-4">
           <div class="w-full flex items-center justify-between">
@@ -286,7 +286,7 @@ function renderHome() {
         <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-xl">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-header font-bold text-gray-900 dark:text-white">Statistik Bulan Ini</h3>
-            <button onclick="renderRekap()" class="text-xs font-semibold text-red-800 dark:text-amber-400">
+            <button onclick="renderRekap()" class="text-xs font-semibold text-red-800 dark:text-[var(--accent-primary)]">
               Lihat Detail <i class="ri-arrow-right-line"></i>
             </button>
           </div>
@@ -339,7 +339,7 @@ function renderHome() {
           <h3 class="font-header font-bold text-gray-900 dark:text-white mb-4">Aktivitas Terakhir</h3>
           <div id="aktivitasTerakhir" class="space-y-3">
             <div class="flex items-center justify-center py-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div>
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800 dark:border-[var(--accent-primary)]"></div>
             </div>
           </div>
         </div>
