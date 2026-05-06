@@ -13,120 +13,47 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
   
   <style>
-  /* === TEMA MAROON + PALETTE PENDAMPING === */
+  /* === TEMA MAROON AMAN - GA GANGGU FUNGSI === */
   :root {
-    --accent-primary: #800000;
-    --accent-secondary: #a00000;
-    --accent-gradient: linear-gradient(135deg, #800000, #600000);
-    --accent-glow: rgba(128, 0, 0, 0.4);
-    
-    /* Light mode */
-    --bg-light: #fdf8f3; /* Krem soft */
-    --card-light: #fffaf5; /* Krem muda */
-    --text-light: #1f2937; /* Abu gelap, bukan hitam pekat */
-    
-    /* Dark mode */
-    --bg-dark: #0f1419; /* Biru gelap, bukan hitam pekat */
-    --card-dark: #1a1f26; /* Biru keabuan */
-    --text-dark: #f5e6d3; /* Krem untuk teks, bukan putih */
-    
-    /* Warna aksen yang cocok sama maroon */
-    --cream: #f5e6d3; /* Krem utama */
-    --cream-dark: #e8d5c4; /* Krem gelap buat badge */
-    --gold: #d4a574; /* Emas soft buat highlight */
-    --gray-soft: #6b7280; /* Abu soft */
+    --maroon: #800000;
+    --maroon-dark: #600000;
+    --cream: #f5e6d3;
+    --cream-dark: #e8d5c4;
+    --gold: #d4a574;
   }
 
-  /* Background */
-  body { background-color: var(--bg-light); color: var(--text-light); }
-  .dark body { background-color: var(--bg-dark) !important; color: var(--text-dark) !important; }
+  /* 1. BACKGROUND - Cuma ganti warna, ga ganggu layout */
+  body { background: #fdf8f3; }
+  .dark body { background: #0f1419 !important; }
 
-  /* Card */
-  .bg-white { background-color: var(--card-light) !important; }
-  .dark .bg-white { background-color: var(--card-dark) !important; }
-  .bg-gray-50 { background-color: var(--bg-light) !important; }
-  .dark .bg-gray-50 { background-color: var(--bg-dark) !important; }
-  .dark .bg-gray-800 { background-color: var(--card-dark) !important; }
-  .dark .bg-gray-900 { background-color: #0a0e14 !important; }
-
-  /* === TEXT DARKMODE - FIX UTAMA === */
-  .dark .text-gray-900 { color: var(--text-dark) !important; } /* Ini yang bikin item ga keliatan */
-  .dark .text-gray-800 { color: #e5e7eb !important; }
-  .dark .text-gray-700 { color: #d1d5db !important; }
-  .dark .text-gray-600 { color: #9ca3af !important; }
-  .dark .text-gray-500 { color: #6b7280 !important; }
-  .dark .text-gray-400 { color: #6b7280 !important; }
-
-  /* Header tetap maroon */
-  .dark .bg-white.shadow-sm { background-color: #1a1f26 !important; }
-
-  /* Paksa ungu/biru jadi maroon - cuma di light mode */
-  :not(.dark) .bg-purple-500, :not(.dark) .bg-purple-600, :not(.dark) .bg-purple-700,
-  :not(.dark) .bg-blue-500, :not(.dark) .bg-blue-600, :not(.dark) .bg-blue-700 {
-    background: var(--accent-gradient) !important;
+  /* 2. CARD UTAMA - Cuma yang ada class khusus */
+  .card-maroon { 
+    background: linear-gradient(135deg, var(--maroon), var(--maroon-dark)) !important; 
   }
   
-    /* Text maroon jadi emas di darkmode - FIX UTAMA */
-.text-\[\#800000\] { color: #800000 !important; }
-.dark .text-\[\#800000\] { color: #d4a574 !important; } /* Emas */
-
-.dark .text-gray-900 { color: #f5e6d3 !important; }
-.dark .text-gray-800 { color: #e5e7eb !important; }
-.dark .text-gray-700 { color: #d1d5db !important; }
-.dark .text-gray-600 { color: #9ca3af !important; }
-
-/* Card krem di darkmode biar teks keliatan */
-.dark .bg-\[\#f5e6d3\] { 
-  background-color: #2d1b1b !important; 
-  color: #f5e6d3 !important; 
-}
-.dark .bg-\[\#f5e6d3\] .text-\[\#800000\] {
-  color: #d4a574 !important; /* Angka 0 jadi emas */
-}
-    
-  /* Krem untuk card statistik */
+  /* 3. CARD KREM - Scope ketat */
   .bg-\[\#f5e6d3\] { background-color: var(--cream) !important; }
   .dark .bg-\[\#f5e6d3\] { 
-    background-color: #2d1b1b !important; /* Maroon gelap transparan */
-    color: var(--cream) !important; 
-  }
-
-  /* Badge */
-  .bg-\[\#e8d5c4\] { background-color: var(--cream-dark) !important; }
-  .dark .bg-\[\#e8d5c4\] { 
     background-color: #3d2424 !important; 
-    color: var(--cream) !important; 
   }
 
-  /* Text maroon tetep maroon di darkmode tapi lebih terang */
-  .text-\[\#800000\] { color: #800000 !important; }
-  .dark .text-\[\#800000\] { color: var(--gold) !important; } /* Emas di darkmode */
+  /* 4. TEXT - Cuma warna, ga pake !important di semua */
+  .text-\[\#800000\] { color: var(--maroon); }
+  .dark .text-\[\#800000\] { color: var(--gold); }
 
-  /* === ANIMASI === */
-  @keyframes slideUpBounce {
-    0% { transform: translateY(20px); opacity: 0; }
-    60% { transform: translateY(-5px); }
-    100% { transform: translateY(0); opacity: 1; }
-  }
-  .animate-slide-up-bounce { animation: slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  /* 5. TEXT DARKMODE - Cuma text-gray, bukan semua */
+  .dark .text-gray-900 { color: #f5e6d3; }
+  .dark .text-gray-800 { color: #e5e7eb; }
+  .dark .text-gray-700 { color: #d1d5db; }
+  .dark .text-gray-600 { color: #9ca3af; }
 
-  @keyframes glow {
-    0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
-    50% { box-shadow: 0 0 20px var(--accent-glow); }
-  }
-  .animate-glow { animation: glow 2s ease-in-out infinite; }
+  /* 6. ANGKA & LABEL DI CARD KREM */
+  .dark .bg-\[\#f5e6d3\] .text-2xl { color: var(--gold) !important; }
+  .dark .bg-\[\#f5e6d3\] .text-xs { color: #d1d5db !important; }
 
-  /* === FONT === */
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-  body { font-family: 'Inter', sans-serif; }
-  .font-header { font-family: 'Inter', sans-serif; font-weight: 900; }
-
-  /* === SCROLL === */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg-light); }
-  ::-webkit-scrollbar-thumb { background: #800000; border-radius: 3px; }
-  .dark ::-webkit-scrollbar-track { background: var(--bg-dark); }
-  .dark ::-webkit-scrollbar-thumb { background: #a00000; }
+  /* 7. HAPUS OVERRIDE BERBAHAYA */
+  /* Jangan pake: [class*="purple"], [style*="--accent-gradient"], :not(.dark) */
+  /* Itu yang bikin fungsi mati */
 </style>
 </head>
 <body class="select-none">
